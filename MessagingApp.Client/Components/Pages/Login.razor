@@ -1,0 +1,54 @@
+﻿@page "/login"
+@layout AuthLayout
+@rendermode InteractiveServer
+
+@inject NavigationManager Nav
+@using Microsoft.AspNetCore.Components.Authorization
+@using System.Security.Claims
+@inject AuthenticationStateProvider AuthStateProvider
+
+<LoginForm OnSuccess="LoginSucceeded" />
+
+@code {
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            RedirectUserBasedOnRole(user);
+        }
+    }
+
+    private async Task LoginSucceeded()
+    {
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        if (user.Identity?.IsAuthenticated == true)
+        {
+            // Use forceLoad: true after login to refresh the auth cookie/state
+            RedirectUserBasedOnRole(user);
+        }
+    }
+
+    private void RedirectUserBasedOnRole(ClaimsPrincipal user, bool force = false)
+    {
+        // Fetch the role value from the claims list directly
+        var roleClaim = user.Claims.FirstOrDefault(c => c.Type == "role" || c.Type == ClaimTypes.Role)?.Value;
+
+        if (roleClaim == "Admin" || roleClaim == "SuperAdmin")
+        {
+            Nav.NavigateTo("/dashboard");
+        }
+        else if (roleClaim == "User")
+        {
+            Nav.NavigateTo("/chatpage");
+        }
+        else
+        {
+            Nav.NavigateTo("/");
+        }
+    }
+}

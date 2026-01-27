@@ -1,0 +1,107 @@
+﻿@inject AuthService Auth
+
+<link href="css/RegisterForm.css" rel="stylesheet" />
+
+<EditForm Model="model" OnValidSubmit="Submit" FormName="RegisterForm">
+    @* 1. Add the Validator component *@
+    <DataAnnotationsValidator />
+
+    @* Optional: Displays a list of all errors at the top *@
+    <ValidationSummary />
+
+    <div class="registration-page">
+        <div class="registration-container">
+            <h1>Create Account</h1>
+            <p class="subtitle">Join us today and get started</p>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="firstName">Full Name</label>
+                    @* 2. Use InputText for validation tracking *@
+                    <InputText @bind-Value="model.Fullname" placeholder="Enter Full Name" />
+                    <ValidationMessage For="@(() => model.Fullname)" />
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <InputText type="email" @bind-Value="model.Email" placeholder="you@example.com" />
+                <ValidationMessage For="@(() => model.Email)" />
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <InputText type="password" @bind-Value="model.Password" placeholder="Minimum 8 characters" />
+                <ValidationMessage For="@(() => model.Password)" />
+            </div>
+
+            <div class="form-group">
+                <label for="confirmPassword">Confirm Password</label>
+                <InputText type="password" @bind-Value="model.ConfirmPassword" placeholder="Re-enter your password" />
+                <ValidationMessage For="@(() => model.ConfirmPassword)" />
+            </div>
+
+            <div class="checkbox-group">
+                <input type="checkbox" id="terms" />
+                <label for="terms">
+                    I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
+                </label>
+            </div>
+            @if (isSuccess)
+            {
+                <div class="alert alert-success mt-3">Successfully Registered.</div>
+            }
+
+            <button type="submit" disabled="@isLoading">Create Account</button>
+
+            <div class="signin-link">
+                Already have an account? <a href="/login">Sign in</a>
+            </div>
+        </div>
+    </div>
+</EditForm>
+
+
+@code {
+    private RegisterRequest model = new();
+    private bool isLoading;
+    private bool isSuccess;
+    private string? error;
+
+    [Parameter] public EventCallback OnSuccess { get; set; }    
+
+    private async Task Submit()
+    {
+        try
+        {
+            isLoading = true;
+            error = null;
+
+            Console.WriteLine($"Submitting register for: {model.Email}");
+
+            var success = await Auth.RegisterAsync(model);
+
+            Console.WriteLine($"Register result: {success}");
+
+            isLoading = false;
+
+            if (success)
+            {                
+                await OnSuccess.InvokeAsync();
+                model = new RegisterRequest();
+
+                isSuccess = true;                
+            }
+            else
+            {
+                error = "Invalid email or password";                
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Submit Error: {ex.Message}");
+            error = $"Error: {ex.Message}";
+            isLoading = false;
+        }
+    }
+}

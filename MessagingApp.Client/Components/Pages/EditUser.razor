@@ -1,0 +1,109 @@
+﻿@page "/edituser/{UserId:guid}"
+@rendermode InteractiveServer
+@inject UserService UserService
+@inject NavigationManager Nav
+
+
+<link href="css/EditUser.css" rel="stylesheet" />
+
+<div class="d-flex justify-content-center align-items-center mb-5" style="min-height: 80vh;">
+    <div style="width: 100%; max-width: 500px;">
+
+<EditForm Model="model" OnValidSubmit="SubmitEdit">
+    <DataAnnotationsValidator />
+<div class="edit-form-card mt-5">    
+
+    <!-- Form Header -->
+    <div class="form-header">
+        <div class="form-icon">✏️</div>
+        <h2 class="form-title">Edit User</h2>
+        <p class="form-subtitle">Update user information</p>
+    </div>
+
+        <div class="form-group">
+            <label class="form-label">
+                Full Name <span class="required">*</span>
+            </label>
+            <input type="text"
+                   class="form-input"
+                   placeholder="Enter full name"  
+                   @bind="model.FullName"
+                   required>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">
+                Email Address <span class="required">*</span>
+            </label>
+            <input type="email"
+                   class="form-input"
+                   placeholder="Enter email address"    
+                   @bind="model.Email"
+                   required>
+        </div>
+
+        @if (hasError)
+        {
+            <div class="alert alert-danger mt-3">Access Denied. You donot have permission.</div>
+        }
+
+        <div class="form-actions">
+            <button type="button" class="btn btn-secondary" onclick="">
+                Cancel
+            </button>
+            <button type="submit" class="btn btn-primary">
+                Save Changes
+            </button>
+        </div>    
+</div>
+
+</EditForm>
+
+    </div>
+</div>
+
+    @code {    
+    [Parameter]
+    public Guid UserId { get; set; }
+        private UpdateUserRequest model = new();
+        private bool _loaded;
+        private bool hasError;
+
+        protected override async Task OnAfterRenderAsync(bool firstRender)
+        {
+            if (firstRender && !_loaded)
+            {
+                _loaded = true;
+
+                var user = await UserService.GetCurrentUserAsync(UserId);
+
+                if (user != null)
+                {
+                    model.userId = UserId;
+                    model.FullName = user.FullName;
+                    model.Email = user.Email;
+                    StateHasChanged();
+                }
+                else
+                {
+                    Console.WriteLine("Failed to load user");
+                }
+            }
+        }
+
+        private async Task SubmitEdit()
+        {
+            var success = await UserService.EditUserAsync(model);
+
+            if (success)
+            {
+                Console.WriteLine("User updated successfully");
+                Nav.NavigateTo("/dashboard");
+            }
+            else
+            {
+                Console.WriteLine("Failed to update user");
+                hasError = true;
+            }
+        }
+    }

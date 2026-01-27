@@ -1,0 +1,158 @@
+﻿@page "/rolemanagement"
+@rendermode InteractiveServer
+@inject UserService UserService
+
+<link href="css/RoleManagement.css" rel="stylesheet" />
+
+<EditForm Model="model" OnValidSubmit="AssignRole">
+
+    <div class="assign-role-card">
+
+        <!-- HEADER -->
+        <div class="card-header">
+            <div class="card1-icon">🎭</div>
+            <h2 class="card-title">Assign Role to User</h2>
+            <p class="card-subtitle">Select a user and assign a new role</p>
+        </div>
+
+        <!-- USERS TABLE -->
+        <div class="card">
+            <h3>Select User</h3>
+
+            <table class="users-table">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>User</th>
+                        <th>Current Role</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+
+                    @if (isLoading)
+                    {
+                        <tr><td colspan="4">Loading users...</td></tr>
+                    }
+                    else if (users == null || !users.Any())
+                    {
+                        <tr><td colspan="4">No users found</td></tr>
+                    }
+                    else
+                    {
+                        <InputRadioGroup @bind-Value="model.UserId" Name="selectedUser">
+
+                            @foreach (var user in users)
+                            {
+                                <tr class="@(model.UserId == user.Id.ToString() ? "selected-row" : "")"
+                                    @onclick="() => model.UserId = user.Id.ToString()">
+
+                                    <td>
+                                        <InputRadio Value="@user.Id" />
+                                    </td>
+
+                                    <td>
+                                        <strong>@user.FullName</strong><br />
+                                        <small>@user.Email</small>
+                                    </td>
+
+                                    <td>@GetRoleName(user.Role)</td>
+
+                                    <td>
+                                        <span class="badge active">Active</span>
+                                    </td>
+                                </tr>
+                            }
+
+                        </InputRadioGroup>
+                    }
+
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ROLE SELECTION -->
+        <div class="roles-section">
+            <h3 class="mt-5 mb-5">Select New Role</h3>
+            <div class="container-fluid d-flex justify-content-center align-items-center">
+            <InputRadioGroup @bind-Value="model.Role" Name="role">
+
+                <label class="role-card @(model.Role == 3 ? "selected" : "") ms-2">
+                    <InputRadio Value="3" />
+                    <div class="icon">👑</div>
+                    <div class="name">Super Admin</div>
+                    <div class="desc">Full system access</div>
+                </label>
+
+                <label class="role-card @(model.Role == 2 ? "selected" : "") ms-2">
+                    <InputRadio Value="2" />
+                    <div class="icon">⚡</div>
+                    <div class="name">Admin</div>
+                    <div class="desc">Manage users & data</div>
+                </label>
+
+                <label class="role-card @(model.Role == 1 ? "selected" : "") ms-2">
+                    <InputRadio Value="1" />
+                    <div class="icon">👤</div>
+                    <div class="name">User</div>
+                    <div class="desc">Standard access</div>
+                </label>
+
+            </InputRadioGroup>
+            </div>
+        </div>
+        @if (hasError)
+        {
+            <div class="alert alert-danger mt-3">Access Denied. You donot have permission.</div>
+        }
+        <!-- ACTIONS -->
+        <div class="action-buttons">
+            <button type="submit" class="btn btn-primary mt-5 mb-3"
+                    disabled="@(model.UserId == "0" || model.Role == 0)">
+                Assign Role
+            </button>
+        </div>
+
+    </div>
+
+</EditForm>
+
+@code {
+    private bool hasError;
+    private RoleRequest model = new();
+    private List<UserRequest>? users;
+    private bool isLoading;   
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+        users = await UserService.GetUsersAsync();
+        isLoading = false;
+    }
+
+    private async Task AssignRole()
+    {
+        var result = await UserService.AssignRoleAsync(model);          
+
+        if(result)
+        {            
+            users = await UserService.GetUsersAsync();
+            model = new RoleRequest();
+        }
+        else
+        {
+            hasError = true;
+        }
+
+    }
+
+    private string GetRoleName(int role) => role switch
+    {
+        1 => "User",
+        2 => "Admin",
+        3 => "Super Admin",
+        _ => "Unknown"
+    };
+}

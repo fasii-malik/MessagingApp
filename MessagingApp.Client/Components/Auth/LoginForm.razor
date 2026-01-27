@@ -1,0 +1,84 @@
+﻿@inject AuthService Auth
+@inject IJSRuntime JS
+
+<link href="css/LoginForm.css" rel="stylesheet" />
+
+<EditForm Model="model" OnValidSubmit="Submit" FormName="LoginForm">
+    <DataAnnotationsValidator />    
+<div class="login-page">
+    <div class="login-container">
+        <h1>Welcome Back</h1>
+        <p class="subtitle">Please enter your credentials to continue</p>
+
+        <div class="form-group">
+            <label for="email">Email Address</label>
+                <input type="email" @bind="model.Email" @bind:event="oninput" placeholder="you@example.com" />
+                <ValidationMessage For="@(() => model.Email)" />
+        </div>
+
+        <div class="form-group">
+            <label for="password">Password</label>
+                <input type="password" @bind="model.Password" @bind:event="oninput" placeholder="Enter your password" />
+                <ValidationMessage For="@(() => model.Password)" />
+            <div class="forgot-password">
+                <a href="#">Forgot password?</a>
+            </div>
+        </div>
+
+        <button type="Submit" disabled="@isLoading">
+            @(isLoading ? "Logging in..." : "Login")
+        </button>
+
+        <div class="signup-link">
+            Don't have an account? <a href="#">Sign up</a>
+        </div>
+    </div>
+</div>
+
+    @if (!string.IsNullOrEmpty(error))
+    {
+        <p class="text-danger">@error</p>
+    }
+</EditForm>
+
+@code {
+    private LoginRequest model = new();
+    private bool isLoading;
+    private string? error;
+
+    [Parameter] public EventCallback OnSuccess { get; set; }    
+
+    private async Task Submit()
+    {
+        try
+        {
+            isLoading = true;
+            error = null;
+
+            Console.WriteLine($"Submitting login for: {model.Email}");
+
+            var success = await Auth.LoginAsync(model);
+
+            Console.WriteLine($"Login result: {success}");
+
+            isLoading = false;
+
+            if (success)
+            {
+               // await JS.InvokeVoidAsync("alert", "Login Successfull!");
+                await OnSuccess.InvokeAsync();
+            }
+            else
+            {
+                //await JS.InvokeVoidAsync("alert", "Invalid email or password!");
+                error = "Invalid email or password";
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Submit Error: {ex.Message}");
+            error = $"Error: {ex.Message}";
+            isLoading = false;
+        }
+    }
+}

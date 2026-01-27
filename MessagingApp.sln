@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.10.35122.118
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MessagingApp.Server", "MessagingApp.Server\MessagingApp.Server.csproj", "{9DC56DA8-F788-46FC-A33A-E61443CA5ABE}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MessagingApp.Client", "MessagingApp.Client\MessagingApp.Client.csproj", "{87252BD8-35B9-493E-9C92-9B0BB3804088}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{9DC56DA8-F788-46FC-A33A-E61443CA5ABE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9DC56DA8-F788-46FC-A33A-E61443CA5ABE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9DC56DA8-F788-46FC-A33A-E61443CA5ABE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9DC56DA8-F788-46FC-A33A-E61443CA5ABE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{87252BD8-35B9-493E-9C92-9B0BB3804088}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{87252BD8-35B9-493E-9C92-9B0BB3804088}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{87252BD8-35B9-493E-9C92-9B0BB3804088}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{87252BD8-35B9-493E-9C92-9B0BB3804088}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {C7E4FBC6-EB31-4956-9156-F6F4194BB974}
+	EndGlobalSection
+EndGlobal

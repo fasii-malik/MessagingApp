@@ -1,0 +1,654 @@
+﻿@page "/chatpage"
+@inject MessageService MessageService
+@inject UserService UserService
+@inject HttpClient Http
+@inject JWTAuthenticationStateProvider AuthProvider
+@inject ChatHubClient Hub
+@inject NavigationManager Nav
+@layout MessengerLayout 
+@rendermode InteractiveServer
+
+<style>
+    /* Test CSS - Put chat styles here temporarily */
+    .chat-container {
+        background: rgba(255, 255, 255, 0.85) !important;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    }
+
+    .chat-message {
+        padding: 10px 14px;
+        margin-bottom: 12px !important;
+        
+        border-radius: 18px;
+    }
+
+        .chat-message.sent {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+            color: white;
+            margin-left: auto;
+            max-width: 300px;
+        }
+
+        .chat-message.received {
+            background: lightgrey;
+            margin-right: auto;
+            max-width: 300px;
+        }
+    /* Send Button */
+    .chat-send-btn {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none !important;
+        border-radius: 8px !important;
+        padding: 10px 24px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
+    }
+
+        .chat-send-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(52, 152, 219, 0.4);
+            background: linear-gradient(135deg, #2980b9 0%, #3498db 100%) !important;
+        }
+
+        .chat-send-btn:active {
+            transform: translateY(0);
+        }
+
+    /* Input Area */
+    .chat-input-area {
+        gap: 12px !important;
+    }
+
+    /* Input Field */
+    .chat-input {
+        background: rgba(255, 255, 255, 0.8) !important;
+        border: 1px solid rgba(52, 152, 219, 0.3) !important;
+        border-radius: 8px !important;
+        padding: 10px 16px;
+        transition: all 0.3s ease;
+    }
+
+        .chat-input:focus {
+            background: rgba(255, 255, 255, 0.95) !important;
+            border-color: #3498db !important;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1) !important;
+            outline: none;
+        }
+
+        .chat-input::placeholder {
+            color: rgba(108, 117, 125, 0.6);
+        }
+
+    .chat-header-fancy {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 16px;
+        border-bottom: 2px solid rgba(52, 152, 219, 0.3);
+        margin-bottom: 16px;
+        background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+        border-radius: 8px;
+    }
+
+    .chat-user-avatar {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 18px;
+    }
+
+    .chat-header-fancy h5 {
+        font-size: 16px;
+        font-weight: 600;
+        color: #2c3e50;
+        margin: 0;
+    }
+
+    .chat-header-fancy small {
+        font-size: 12px;
+    }
+
+    .conversations-wrapper {
+        display: flex;
+        height: 100%;
+    }
+
+    /* Mini sidebar */
+    .mini-sidebar {
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(8px);
+        border-right: 1px solid rgba(0,0,0,0.05);
+        transition: width 0.3s ease;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 8px 4px;
+    }
+
+        .mini-sidebar.collapsed {
+            width: 48px;
+        }
+
+        .mini-sidebar.expanded {
+            width: 140px;
+            align-items: flex-start;
+            padding-left: 12px;
+        }
+
+    /* Buttons */
+    .mini-btn {
+        background: transparent;
+        border: none;
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 6px;
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-weight: 500;
+        color: #2c3e50;
+    }
+
+        .mini-btn:hover {
+            background: rgba(52, 152, 219, 0.12);
+        }
+
+        .mini-btn.active {
+            background: rgba(52, 152, 219, 0.2);
+        }
+
+</style>
+
+<link href="css/MessengerLayout.css" rel="stylesheet" />
+
+        <div class="custom-container">
+
+    <div class="sidebar">
+        <!-- User Header -->
+        <div class="sidebar">
+            <!-- User Header -->
+            <div class="user-header d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="user-avatar">
+                        @CurrentUserInitials
+                    </div>
+                    <div class="user-info">
+                        <h3>@(CurrentUser?.FullName ?? "Unknown")</h3>
+                        <p>@(CurrentUser?.IsOnline == true ? "Online" : "Offline")</p>
+                    </div>
+                </div>
+
+                <!-- THREE DOTS -->
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-light border-0"
+                            data-bs-toggle="dropdown">
+                        ⋮
+                    </button>
+
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        <li>
+                            <button class="dropdown-item" >
+                                ➕ Create Group
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+        </div>
+        
+        <div class="conversations-wrapper">
+
+            <!-- MINI SIDEBAR -->
+            <div class="mini-sidebar @(isMiniSidebarExpanded ? "expanded" : "collapsed")">
+
+                <button class="mini-btn" @onclick="ToggleMiniSidebar">
+                    ☰
+                </button>
+
+                <button class="mini-btn @(activeSection == SidebarSection.OnlineUsers ? "active" : "")"
+                        @onclick="() => activeSection = SidebarSection.OnlineUsers">
+                    👤
+                    @if (isMiniSidebarExpanded)
+                    {
+                        <span>Online</span>
+                    }
+                </button>
+
+                <button class="mini-btn @(activeSection == SidebarSection.Conversations ? "active" : "")"
+                        @onclick="() => activeSection = SidebarSection.Conversations">
+                    💬
+                    @if (isMiniSidebarExpanded)
+                    {
+                        <span>Chats</span>
+                    }
+                </button>
+
+                <button class="mini-btn @(activeSection == SidebarSection.Groups ? "active" : "")"
+                        @onclick="() => activeSection = SidebarSection.Groups">
+                    👥
+                    @if (isMiniSidebarExpanded)
+                    {
+                        <span>Groups</span>
+                    }
+                </button>
+
+            </div>
+            
+
+            <div class="conversations-list">
+
+                @switch (activeSection)
+                {
+                    case SidebarSection.Conversations:
+                        <!-- CONVERSATIONS LIST -->
+                        @if (conversations == null || !conversations.Any())
+                        {
+                            <p class="text-muted px-2 text-center">No conversations yet</p>
+                        }
+                        else
+                        {
+                            <!-- Search Bar -->
+                            <div class="search-container">
+                                <input type="text" class="search-box" placeholder="Search conversations...">
+                            </div>
+                            @foreach (var convo in conversations)
+                            {
+                                <div class="conversation-item @(selectedUser?.Id == convo.UserId ? "active" : "")"
+                                     @onclick="() => SelectConversation(convo)">
+                                    <!-- Avatar (initials) -->
+                                    <div class="conversation-avatar">
+                                        NA
+                                    </div>
+
+                                    <!-- Conversation details -->
+                                    <div class="conversation-details">
+                                        <div class="conversation-header">
+                                            <span class="conversation-name">@convo.FullName</span>
+                                            <span class="conversation-time">@convo.LastMessageTime.ToLocalTime().ToString("HH:mm")</span>
+                                        </div>
+                                        <div class="conversation-preview">
+                                            @convo.LastMessage
+                                        </div>
+                                    </div>
+
+
+                                    <!-- DROPDOWN -->
+                                    <div class="dropdown">
+                                        <button class="btn btn-sm btn-light border-0"
+                                                data-bs-toggle="dropdown">
+                                            ⋮
+                                        </button>
+
+                                        <ul class="dropdown-menu dropdown-menu-end">
+                                            <li>
+                                                <button class="dropdown-item text-danger"
+                                                        >
+                                                    🗑 Delete
+                                                </button>
+                                            </li>
+                                        </ul>
+                                    </div>
+
+                                    <!-- Unread messages badge -->
+                                    @if (convo.UnreadCount > 0)
+                                    {
+                                        <div class="unread-badge">@convo.UnreadCount</div>
+                                    }
+                                </div>
+                            }
+                        }
+                        break;
+
+                    case SidebarSection.OnlineUsers:
+
+                        <div class="px-2">
+
+                            <!-- ONLINE USERS -->
+                            <div class="mb-3">                                
+
+                                @if (!users.Any(u => u.IsOnline))
+                                {
+                                    <p class="text-muted small text-center">No users online</p>
+                                }
+                                else
+                                {
+                                    @foreach (var user in users.Where(u => u.IsOnline))
+                                    {
+                                        <div class="conversation-item @(selectedUser?.Id == user.Id ? "active" : "")"
+                                             @onclick="() => SelectUser(user)">
+
+                                            <div class="conversation-avatar">
+                                                @user.FullName[0]
+                                            </div>
+
+                                            <div class="conversation-details">
+                                                <span class="conversation-name">@user.FullName</span>
+                                                <small class="text-success">Online</small>
+                                            </div>
+                                        </div>
+                                    }
+                                }
+                            </div>
+
+                            <!-- OFFLINE USERS -->
+                            <div>                                
+
+                                @foreach (var user in users.Where(u => !u.IsOnline))
+                                {
+                                    <div class="conversation-item text-muted @(selectedUser?.Id == user.Id ? "active" : "")"
+                                         @onclick="() => SelectUser(user)">
+
+                                        <div class="conversation-avatar">
+                                            @user.FullName[0]
+                                        </div>
+
+                                        <div class="conversation-details">
+                                            <span class="conversation-name">@user.FullName</span>
+                                            <small>Offline</small>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+
+                        </div>
+
+                        break;
+
+
+                    case SidebarSection.Groups:
+                        <p class="text-muted px-2">Groups coming soon 🚧</p>
+                        break;
+                }
+
+            </div>
+
+
+    </div>
+
+    </div>
+
+@if (loading)
+{
+    <p class="mt-5 text-center">Loading...</p>
+}
+else if (!string.IsNullOrEmpty(initError))
+{
+    <p style="color:red">@initError</p>
+}
+else
+{
+
+    <div class="d-flex flex-column h-100" style="width:100%">
+
+            <!-- CHAT AREA -->
+ <!-- MAIN CONTENT -->
+<div class="flex-grow-1 d-flex align-items-center justify-content-center bg-light">
+
+                @if (selectedUser == null)
+    {
+        <!-- EMPTY STATE -->
+        <div class="text-center">
+            <div style="font-size:64px;">💬</div>
+            <h2 class="mt-3">Select a user to start chatting</h2>
+            <p class="text-muted">Choose a user from the top bar</p>
+        </div>
+    }
+    else
+    {
+        <!-- CHAT AREA -->
+        <div class="bg-white border rounded p-3 d-flex flex-column chat-container"
+             style="height:90%; width:90%">
+             @if(selectedUser != null){
+                            <div class="chat-header-fancy">
+                                <div class="chat-user-avatar">
+                                    @(selectedUser.FullName.Split(' ').Select(n => n[0]).FirstOrDefault())
+                                </div>
+                                <div>
+                                    <h5 class="mb-0">@selectedUser.FullName</h5>
+                                    <small class="text-muted">@(selectedUser.IsOnline ? "Online" : "Offline")</small>
+                                </div>
+                            </div>
+
+                            <div class="flex-grow-1 border rounded p-2 mb-2 overflow-auto chat-message">
+                                @foreach (var msg in messages)
+                                {
+                                    @* Check if message is sent by current user *@
+                                    var isSent = msg.SenderId.ToString() == currentUserId;
+
+                                    <div class="chat-message @(isSent ? "sent" : "received")">
+                                        <strong>
+                                            @(isSent ? "You" : selectedUser.FullName)
+                                        </strong>
+                                        <span class="message-text">@msg.Content</span>
+                                    </div>
+                                }
+                            </div>
+                        }else
+                        {
+                            <div class="chat-header-fancy">
+                                <div class="chat-user-avatar">
+                                    @(selectedUser.FullName.Split(' ').Select(n => n[0]).FirstOrDefault())
+                                </div>
+                                <div>
+                                    <h5 class="mb-0">@selectedUser.FullName</h5>
+                                    <small class="text-muted">@(selectedConversation.IsOnline ? "Online" : "Offline")</small>
+                                </div>
+                            </div>
+
+                            <div class="flex-grow-1 border rounded p-2 mb-2 overflow-auto chat-message">
+                                @foreach (var msg in messages)
+                                {
+                                    @* Check if message is sent by current user *@
+                                    var isSent = msg.SenderId.ToString() == currentUserId;
+
+                                    <div class="chat-message @(isSent ? "sent" : "received")">
+                                        <strong>
+                                            @(isSent ? "You" : selectedConversation.FullName)
+                                        </strong>
+                                        <span class="message-text">@msg.Content</span>
+                                    </div>
+                                }
+                            </div>
+                        }
+
+
+                        <div class="d-flex gap-2 chat-input-area">
+                <input class="form-control chat-input"
+                       placeholder="Type a message..."
+                       @bind="newMessage" />
+                            <button class="btn btn-secondary chat-send-btn" @onclick="Send">
+                    Send
+                </button>
+            </div>
+
+        </div>
+    }
+
+</div>
+
+    </div>@*  i added *@
+
+}
+</div>
+
+@code {
+    List<UserDto> users = new();
+    string? currentUserId;
+    string? token;
+    bool loading = true;
+    string? initError;
+    List<MessageDto> messages = new();
+    UserDto? selectedUser;
+    UserDto? CurrentUser { get; set; }
+    enum SidebarSection
+    {
+        Conversations,
+        OnlineUsers,
+        Groups
+    }
+    SidebarSection activeSection = SidebarSection.Conversations;
+
+    private string CurrentUserInitials => CurrentUser == null ? "NA"
+    : string.Concat( CurrentUser.FullName
+        .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+        .Select(n => n[0])
+    ).ToUpper();
+
+    string newMessage = "";
+    List<ConversationDto>? conversations { get; set; }
+    ConversationDto? selectedConversation;
+    bool isMiniSidebarExpanded = false;
+    
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+
+        loading = true;
+        try
+        {
+            token = await AuthProvider.GetTokenAsync();
+            currentUserId = await AuthProvider.GetUserIdAsync();
+            
+
+            if (string.IsNullOrEmpty(token) || string.IsNullOrEmpty(currentUserId))
+            {
+                initError = "Authentication failed.";
+                return;
+            }
+
+            // Fetch users with online status from backend
+            var userRequests = await MessageService.GetOnlineUsersAsync(); // new method
+            if (userRequests == null)
+            {
+                initError = "Failed to load users.";
+                return;
+            }            
+
+            var user = userRequests.FirstOrDefault(u => u.Id.ToString() == currentUserId);
+
+            if (user != null)
+            {
+                CurrentUser = new UserDto
+                    {
+                        FullName = user.FullName,
+                        IsOnline = true // current user is online once connected
+                    };
+            }
+
+            users = userRequests
+                .Where(u => u.Id.ToString() != currentUserId) // exclude self
+                .ToList();
+
+            // Getting Conversations
+            conversations = await MessageService.GetConversationAsync();
+
+            // Connect SignalR AFTER fetching users
+            await Hub.ConnectAsync(token, Nav);
+
+            // Subscribe to hub events
+            Hub.MessageReceived += OnMessageReceived;
+
+            Hub.UserOnline += userId =>
+            {
+                var u = users.FirstOrDefault(x => x.Id.ToString() == userId);
+                if (u != null) u.IsOnline = true;
+                InvokeAsync(StateHasChanged);
+            };
+
+            Hub.UserOffline += userId =>
+            {
+                var u = users.FirstOrDefault(x => x.Id.ToString() == userId);
+                if (u != null) u.IsOnline = false;
+                InvokeAsync(StateHasChanged);
+            };
+
+            Hub.SetOnlineUsers += ids =>
+            {
+                foreach (var u in users)
+                    u.IsOnline = ids.Contains(u.Id.ToString());
+                InvokeAsync(StateHasChanged);
+            };
+        }
+        catch (Exception ex)
+        {
+            initError = $"Unexpected error: {ex.Message}";
+        }
+        finally
+        {
+            loading = false;
+            StateHasChanged();
+        }
+    }
+
+    void ToggleMiniSidebar()
+    {
+        isMiniSidebarExpanded = !isMiniSidebarExpanded;
+    }
+
+
+    async Task SelectUser(UserDto user)
+    {
+        selectedUser = user;
+        selectedConversation = null; 
+
+        try
+        {
+            messages = await MessageService.GetChatAsync(user.Id);
+        }
+        catch (Exception ex)
+        {
+            initError = $"Error fetching messages: {ex.Message}";
+        }
+
+        StateHasChanged();
+    }
+
+    async Task SelectConversation(ConversationDto convo)
+    {
+        selectedConversation = convo;
+
+        // 🔥 Sync selectedUser from conversation
+        selectedUser = users.FirstOrDefault(u => u.Id == convo.UserId)
+                       ?? new UserDto
+                           {
+                               Id = convo.UserId,
+                               FullName = convo.FullName
+                           };
+
+        messages = await MessageService.GetChatAsync(convo.UserId);
+
+        StateHasChanged();
+    }
+
+
+    async Task Send()
+    {
+        if (selectedUser == null || string.IsNullOrWhiteSpace(newMessage)) return;
+
+        await Hub.SendMessageAsync(selectedUser.Id.ToString(), newMessage);
+        newMessage = "";
+    }
+
+    void OnMessageReceived(MessageDto msg)
+    {
+        if (selectedUser != null && (msg.SenderId == selectedUser.Id || msg.ReceiverId == selectedUser.Id))
+        {
+            messages.Add(msg);
+            InvokeAsync(StateHasChanged);
+        }
+    }
+}

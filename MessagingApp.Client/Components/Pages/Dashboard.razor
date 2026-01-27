@@ -1,0 +1,406 @@
+﻿@page "/dashboard"
+@attribute [Authorize]
+
+@inject UserService UserService
+@rendermode InteractiveServer
+
+
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
+
+<link href="css/Dashboard.css" rel="stylesheet" />
+
+@if (isLoading)
+{
+    <p>Loading...</p>
+}
+else if (userRole == "Admin" || userRole == "SuperAdmin")
+{
+<div class="dashboard-container">
+    <!-- Header -->
+    <div class="dashboard-header">
+        <div class="header-left">
+            <h1>Access Control Dashboard</h1>
+            <p>Manage users, roles, and permissions across your system</p>
+        </div>
+        <div class="header-right">
+            <div class="header-right">
+                <AuthorizeView>
+                    <Authorized>
+                        <div class="user-badge">
+                            @* 1. Extract Role manually using the claim type *@
+                            @{
+                                var roleClaim = context.User.FindFirst(System.Security.Claims.ClaimTypes.Role)?.Value
+                                ?? context.User.FindFirst("role")?.Value;
+                                
+                            }
+
+                            @* 2. Show Role first with an icon *@
+                            <span>👑 @roleClaim</span>
+                        </div>
+                    </Authorized>
+                    <NotAuthorized>
+                        <div class="user-badge">Guest</div>
+                    </NotAuthorized>
+                </AuthorizeView>
+            </div>
+            <button class="btn-logout" @onclick="Logout">Logout</button>
+        </div>
+    </div>
+
+    <!-- Stats Grid -->
+    <div class="stats-grid">
+        <div class="stat-card users">
+            <div class="stat-header">
+                <div>
+                    <div class="stat-title">Total Users</div>
+                    <div class="stat-value">@totalUsers</div>
+                    <div class="stat-change positive">↑ 12% from last month</div>
+                </div>
+                <div class="stat-icon">👥</div>
+            </div>
+        </div>
+
+        <div class="stat-card roles">
+            <div class="stat-header">
+                <div>
+                    <div class="stat-title">Active Roles</div>
+                    <div class="stat-value">8</div>
+                    <div class="stat-change positive">↑ 2 new roles added</div>
+                </div>
+                <div class="stat-icon">🎭</div>
+            </div>
+        </div>
+
+        <div class="stat-card permissions">
+            <div class="stat-header">
+                <div>
+                    <div class="stat-title">Permissions</div>
+                    <div class="stat-value">45</div>
+                    <div class="stat-change">Across 6 modules</div>
+                </div>
+                <div class="stat-icon">🔐</div>
+            </div>
+        </div>
+
+        <div class="stat-card activity">
+            <div class="stat-header">
+                <div>
+                    <div class="stat-title">Today's Activity</div>
+                    <div class="stat-value">127</div>
+                    <div class="stat-change positive">↑ 23% more active</div>
+                </div>
+                <div class="stat-icon">📊</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Grid -->
+    <div class="content-grid">
+        <!-- User Management -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">User Management</h2>
+                <button class="btn-primary">+ Add User</button>
+            </div>
+
+            <div class="search-box">
+                <input type="text" placeholder="Search users by name, email, or role...">
+            </div>
+
+            <table class="users-table">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Last Active</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (isLoading)
+                    {
+                        <tr>
+                            <td colspan="5" style="text-align:center; padding:20px;">
+                                Loading users...
+                            </td>
+                        </tr>
+                    }
+                    else if (users == null || !users.Any())
+                    {
+                        <tr>
+                            <td colspan="5" style="text-align:center; padding:20px;">
+                                No users found.
+                            </td>
+                        </tr>
+                    }@if (isLoading)
+{
+    <tr>
+        <td colspan="5" style="text-align:center; padding:20px;">
+            Loading users...
+        </td>
+    </tr>
+}
+else if (users == null || !users.Any())
+{
+    <tr>
+        <td colspan="5" style="text-align:center; padding:20px;">
+            No users found.
+        </td>
+    </tr>
+}else
+{
+     @foreach (var user in users)
+                        {
+                            string roleName = "Unknown"; 
+
+                            if ((int)user.Role == 1) { roleName = "User"; }
+                            else if ((int)user.Role == 2) { roleName = "Admin"; }
+                            else if ((int)user.Role == 3) { roleName = "SuperAdmin"; }
+                            <tr>                       
+                            <td>
+                                <div class="user-info">
+                                    <div class="user-avatar">JD</div>
+                                    <div class="user-details">
+                                        <h4>@user.FullName</h4>
+                                        <p>@user.Email</p>                                        
+                                    </div>
+                                </div>
+                            </td>
+                            <td><span class="badge super-admin">@roleName</span></td>
+                            <td><span class="badge active">Active</span></td>
+                            <td>2 hours ago</td>
+
+                            <td>
+                                <div class="action-buttons">
+                                        <a class="btn-small btn-edit" href="/edituser/@user.Id">Edit</a>
+                                        <button class="btn-small btn-delete" @onclick="() => DeleteUser(user.Id.ToString())">
+                                            Delete
+                                        </button>
+
+                                </div>
+                            </td>                        
+                    </tr>
+                    }
+}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Sidebar -->
+        <div>
+            <!-- Quick Actions -->
+            <div class="card" style="margin-bottom: 24px;">
+                <div class="card-header">
+                    <h2 class="card-title">Quick Actions</h2>
+                </div>
+                <div class="quick-actions">
+                    <a href="/register" class="quick-action-btn">
+                        <div class="quick-action-icon">👤</div>
+                        <div class="quick-action-content">
+                            <h4>Create New User</h4>
+                            <p>Add a new user to the system</p>
+                        </div>
+                    </a>
+                    <a href="/rolemanagement" class="quick-action-btn">
+                        <div class="quick-action-icon">🎭</div>
+                        <div class="quick-action-content">
+                            <h4>Manage Roles</h4>
+                            <p>Configure roles and permissions</p>
+                        </div>
+                    </a>
+                    <a href="/setpermissions" class="quick-action-btn">
+                        <div class="quick-action-icon">🔐</div>
+                        <div class="quick-action-content">
+                            <h4>Set Permissions</h4>
+                            <p>Grant or revoke access rights</p>
+                        </div>
+                    </a>
+                    <a href="#" class="quick-action-btn">
+                        <div class="quick-action-icon">📋</div>
+                        <div class="quick-action-content">
+                            <h4>Activity Logs</h4>
+                            <p>View detailed system logs</p>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Role Distribution -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Role Distribution</h2>
+                </div>
+                <div class="role-chart">
+                    <div class="role-bar">
+                        <div class="role-bar-header">
+                            <span class="role-bar-name">Super Admin</span>
+                            <span class="role-bar-value">@superAdminCount</span>
+                        </div>
+                        <div class="role-bar-track">
+                            <div class="role-bar-fill" style="width: 4%;"></div>
+                        </div>
+                    </div>
+                    <div class="role-bar">
+                        <div class="role-bar-header">
+                            <span class="role-bar-name">Admin</span>
+                            <span class="role-bar-value">@adminCount</span>
+                        </div>
+                        <div class="role-bar-track">
+                            <div class="role-bar-fill" style="width: 22%;"></div>
+                        </div>
+                    </div>
+                    <div class="role-bar">
+                        <div class="role-bar-header">
+                            <span class="role-bar-name">User</span>
+                            <span class="role-bar-value">@standardUserCount</span>
+                        </div>
+                        <div class="role-bar-track">
+                            <div class="role-bar-fill" style="width: 97%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity -->
+    <div class="card">
+        <div class="card-header">
+            <h2 class="card-title">Recent Activity</h2>
+            <button class="btn-primary">View All</button>
+        </div>
+        <div class="activity-list">
+            <div class="activity-item">
+                <div class="activity-icon permission">🔐</div>
+                <div class="activity-content">
+                    <div class="activity-title">Permission Granted</div>
+                    <div class="activity-desc">Super Admin granted "Users.Delete" permission to John Doe</div>
+                    <div class="activity-time">5 minutes ago</div>
+                </div>
+            </div>
+            <div class="activity-item">
+                <div class="activity-icon role">🎭</div>
+                <div class="activity-content">
+                    <div class="activity-title">Role Assigned</div>
+                    <div class="activity-desc">Admin role assigned to Jane Smith by Super Admin</div>
+                    <div class="activity-time">1 hour ago</div>
+                </div>
+            </div>
+            <div class="activity-item">
+                <div class="activity-icon user-action">👤</div>
+                <div class="activity-content">
+                    <div class="activity-title">New User Created</div>
+                    <div class="activity-desc">Charlie Martin was added to the system</div>
+                    <div class="activity-time">2 hours ago</div>
+                </div>
+            </div>
+            <div class="activity-item">
+                <div class="activity-icon permission">🔐</div>
+                <div class="activity-content">
+                    <div class="activity-title">Permission Revoked</div>
+                    <div class="activity-desc">Super Admin revoked "Reports.Export" permission from Bob Wilson</div>
+                    <div class="activity-time">3 hours ago</div>
+                </div>
+            </div>
+            <div class="activity-item">
+                <div class="activity-icon user-action">👤</div>
+                <div class="activity-content">
+                    <div class="activity-title">User Status Changed</div>
+                    <div class="activity-desc">Alice Davis account was deactivated</div>
+                    <div class="activity-time">1 day ago</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+}
+else
+{
+    <p style="text-align:center; margin-top:50px; font-weight:bold; color:red;">
+        ❌ Not Authorized
+    </p>
+}
+
+@code {
+    private List<UserRequest>? users;
+    private bool isLoading;
+    private string? currentUserName;
+    private string? userRole;
+
+    int superAdminCount;
+    int adminCount;
+    int standardUserCount;
+    int totalUsers;
+
+    protected override async Task OnInitializedAsync()
+    {
+        isLoading = true;
+
+        users = await UserService.GetUsersAsync();  
+        
+        // Get specific counts
+        superAdminCount = users?.Count(u => u.Role == 3) ?? 0;
+        adminCount = users?.Count(u => u.Role == 2) ?? 0;
+        standardUserCount = users?.Count(u => u.Role == 1) ?? 0;
+        totalUsers = users?.Count ?? 0;
+
+
+        isLoading = false;
+
+        // 1. Get the current authentication state
+        var authState = await AuthStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        // 2. Extract the Name claim (Identity.Name)
+        if (user.Identity is { IsAuthenticated: true })
+        {
+            currentUserName = user.Identity.Name;
+        }
+
+        userRole = user.Claims.FirstOrDefault(c => c.Type == "role")?.Value;
+    }
+
+    private async Task DeleteUser(string userId)
+    {
+        try
+        {
+            // Call your service method
+            bool success = await UserService.DeleteUserAsync(userId);
+
+            if (success)
+            {
+                // Refresh users list or show a success message
+                users = await UserService.GetUsersAsync();
+                Console.WriteLine("User deleted successfully");
+            }
+            else
+            {
+                // Handle unauthorized or failure
+                await JS.InvokeVoidAsync("alert", "You are not authorized to delete this user.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Delete error: {ex.Message}");
+            await JS.InvokeVoidAsync("alert", "An error occurred while deleting the user.");
+        }
+    }
+
+
+    private async Task Logout()
+    {        
+        await JS.InvokeVoidAsync("deleteCookie", "access_token");
+
+        // 2. Notify Blazor
+        if (AuthStateProvider is JWTAuthenticationStateProvider jwtAuth)
+        {
+            jwtAuth.MarkAsUnauthorize();
+        }
+
+        Nav.NavigateTo("/login", true);
+    }
+
+}

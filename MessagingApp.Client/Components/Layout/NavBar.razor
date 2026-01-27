@@ -1,0 +1,73 @@
+﻿@using MessagingApp.Client.Security
+@inject IJSRuntime JS
+@inject NavigationManager Nav
+@inject AuthenticationStateProvider AuthStateProvider
+@rendermode InteractiveServer
+
+<style>
+    .btn-gradient {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+        transition: opacity 0.2s ease;
+    }
+
+        .btn-gradient:hover {
+            opacity: 0.9;
+            color: white;
+        }
+
+</style>
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark px-4">
+    <a class="navbar-brand" href="/">MessagingApp</a>
+
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav me-auto">
+            <li class="nav-item">
+                <a class="nav-link" href="/">Home</a>
+            </li>
+        </ul>
+
+        <div class="navbar-nav ms-auto">
+            <AuthorizeView>
+                <Authorized>
+                    @{
+                        var nameClaim = context.User.FindFirst("name")?.Value
+                        ?? context.User.FindFirst("preferred_username")?.Value
+                        ?? context.User.Identity?.Name
+                        ?? context.User.FindFirst("sub")?.Value
+                        ?? "User";
+                    }
+                    <span class="navbar-text text-light me-3">
+                        Welcome, <span class="text-info">@nameClaim</span>
+                    </span>                    
+                    <button class="btn btn-outline-danger btn-sm" @onclick="Logout">Logout</button>
+                </Authorized>
+                <NotAuthorized>
+
+                    <a href="/login" class="btn btn-light btn-sm me-2">Login</a>                    
+                    <a href="/register" class="btn btn-gradient btn-sm">Register</a>
+
+                </NotAuthorized>
+            </AuthorizeView>
+        </div>
+    </div>
+</nav>
+
+@code {
+    private async Task Logout()
+    {
+        await JS.InvokeVoidAsync("deleteCookie", "access_token");
+
+        if (AuthStateProvider is JWTAuthenticationStateProvider jwtAuth)
+        {
+            jwtAuth.MarkAsUnauthorize();
+        }
+
+        Nav.NavigateTo("/login", true);
+    }
+}
