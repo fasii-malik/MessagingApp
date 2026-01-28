@@ -106,6 +106,74 @@ namespace MessagingApp.Client.Services
             return await response.Content.ReadFromJsonAsync<List<ConversationDto>>();
         }
 
+        public async Task<bool> DeleteMessagesAsync(IEnumerable<Guid> messageIds)
+        {
+            var token = await _cookieService.GetToken();
+
+            if (string.IsNullOrWhiteSpace(token))
+                return false;
+
+            var request = new HttpRequestMessage(
+                HttpMethod.Delete,
+                "/api/Chat/delete-messages"
+            );
+
+            request.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", token);
+
+            // DELETE with body (allowed, but must be explicit)
+            request.Content = JsonContent.Create(new
+            {
+                messageIds = messageIds
+            });
+
+            var response = await _http.SendAsync(request);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError(
+                    "DeleteMessages failed with status {Status}",
+                    response.StatusCode
+                );
+                return false;
+            }
+
+            return true;
+        }
+
+        public async Task<bool> DeleteConversationAsync(Guid otherUserId)
+        {
+            try
+            {
+                var token = await _cookieService.GetToken();
+
+                if (string.IsNullOrWhiteSpace(token))
+                    return false;
+
+                var request = new HttpRequestMessage(
+                    HttpMethod.Delete,
+                    $"/api/Chat/delete-conversation/{otherUserId}"
+                );
+
+                request.Headers.Authorization =
+                    new AuthenticationHeaderValue("Bearer", token);
+
+                var response = await _http.SendAsync(request);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogError("DeleteConversation failed with status {Status}", response.StatusCode);
+                    return false;
+                }
+
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Exception in DeleteConversationAsync");
+                return false;
+            }
+        }
 
     }//class
 }//namespace

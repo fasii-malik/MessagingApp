@@ -19,7 +19,6 @@ namespace MessagingApp.Server.Application.Repositories
             _db.Messages.Add(message);
             await _db.SaveChangesAsync();
         }
-
         public async Task<List<Message>> GetChatAsync(string userAId, string userBId)
         {
             return await _db.Messages
@@ -29,7 +28,6 @@ namespace MessagingApp.Server.Application.Repositories
                 .OrderBy(m => m.CreatedAt)
                 .ToListAsync();
         }
-
         public async Task<Message?> GetLastMessageAsync(string userAId, string userBId)
         {
             return await _db.Messages
@@ -39,7 +37,6 @@ namespace MessagingApp.Server.Application.Repositories
                 .OrderByDescending(m => m.CreatedAt)
                 .FirstOrDefaultAsync();
         }
-
         public async Task<List<User>> GetAllUsersExceptAsync(string currentUserId)
         {
             // 1. Parse the string ID into a Guid before the query
@@ -54,7 +51,6 @@ namespace MessagingApp.Server.Application.Repositories
                 .Where(u => u.Id != currentUserGuid)
                 .ToListAsync();
         }
-
         public async Task<List<Message>> GetAllMessagesForUserAsync(string currentUserId)
         {
             var userGuid = Guid.Parse(currentUserId);
@@ -63,6 +59,33 @@ namespace MessagingApp.Server.Application.Repositories
                 .Where(m => m.SenderId == userGuid || m.ReceiverId == userGuid)
                 .OrderByDescending(m => m.CreatedAt) // optional: descending for convenience
                 .ToListAsync();
+        }
+        // 🔹 Delete multiple selected messages
+        public async Task DeleteManyAsync(IEnumerable<Guid> messageIds)
+        {
+            var messages = await _db.Messages
+                .Where(m => messageIds.Contains(m.Id))
+                .ToListAsync();
+
+            if (!messages.Any())
+                return;
+
+            _db.Messages.RemoveRange(messages);
+            await _db.SaveChangesAsync();
+        }
+        public async Task DeleteConversationAsync(Guid userId, Guid otherUserId)
+        {
+            var messages = await _db.Messages
+                .Where(m =>
+                    (m.SenderId == userId && m.ReceiverId == otherUserId) ||
+                    (m.SenderId == otherUserId && m.ReceiverId == userId))
+                .ToListAsync();
+
+            if (!messages.Any())
+                return;
+
+            _db.Messages.RemoveRange(messages);
+            await _db.SaveChangesAsync();
         }
 
     }

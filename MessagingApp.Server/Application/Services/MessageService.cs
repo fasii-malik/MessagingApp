@@ -129,5 +129,25 @@ namespace MessagingApp.Server.Application.Services
                 .ToList();
         }
 
+        public async Task DeleteMessagesAsync(IEnumerable<Guid> messageIds, Guid currentUserId)
+        {
+            if (messageIds == null || !messageIds.Any())
+                return;
+            
+            await _repo.DeleteManyAsync(messageIds);
+
+            // 🧹 Optional: clear related cache
+            _cache.Remove($"messages_{currentUserId}");
+        }
+
+        public async Task DeleteConversationAsync(Guid currentUserId, Guid otherUserId)
+        {
+            if (currentUserId == Guid.Empty || otherUserId == Guid.Empty)
+                return;
+            // Call repository to delete all messages between these two users
+            await _repo.DeleteConversationAsync(currentUserId, otherUserId);
+
+        }
+
     }
 }

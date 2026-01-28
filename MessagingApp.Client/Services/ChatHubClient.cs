@@ -71,4 +71,15 @@ public class ChatHubClient
         if (_connection != null)
             await _connection.SendAsync("SendMessage", receiverId, message);
     }
+
+    public async Task DisconnectAsync()
+    {
+        if (_connection != null)
+        {
+            await _connection.StopAsync();
+            await _connection.DisposeAsync();
+            _connection = null;
+        }
+    }
+
 }

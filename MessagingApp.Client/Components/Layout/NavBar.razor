@@ -2,6 +2,7 @@
 @inject IJSRuntime JS
 @inject NavigationManager Nav
 @inject AuthenticationStateProvider AuthStateProvider
+@inject ChatHubClient Hub
 @rendermode InteractiveServer
 
 <style>
@@ -61,13 +62,20 @@
 @code {
     private async Task Logout()
     {
+        // 🔥 1. Disconnect SignalR
+        await Hub.DisconnectAsync();
+
+        // 2. Remove token
         await JS.InvokeVoidAsync("deleteCookie", "access_token");
 
+        // 3. Update auth state
         if (AuthStateProvider is JWTAuthenticationStateProvider jwtAuth)
         {
             jwtAuth.MarkAsUnauthorize();
         }
 
+        // 4. Redirect
         Nav.NavigateTo("/login", true);
     }
+
 }

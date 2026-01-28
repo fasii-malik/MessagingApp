@@ -6,6 +6,7 @@
 @inject ChatHubClient Hub
 @inject NavigationManager Nav
 @layout MessengerLayout 
+@inject IJSRuntime JS
 @rendermode InteractiveServer
 
 <style>
@@ -169,14 +170,58 @@
             background: rgba(52, 152, 219, 0.2);
         }
 
+    .message-wrapper {
+        display: flex;
+        margin-bottom: 10px;
+        cursor: pointer;
+    }
+
+    .sent-wrap {
+        justify-content: flex-end;
+    }
+
+    .received-wrap {
+        justify-content: flex-start;
+    }
+
+    .chat-message {
+        position: relative;
+        padding: 10px 14px;
+        border-radius: 18px;
+        max-width: 300px;
+    }
+
+        /* Selection highlight */
+        .chat-message.selected {
+            background-color: rgba(52, 152, 219, 0.15) !important;
+            border: 1px solid rgba(52, 152, 219, 0.6);
+        }
+
+    /* Blue tick */
+    .selection-tick {
+        position: absolute;
+        bottom: -6px;
+        right: -6px;
+        width: 20px;
+        height: 20px;
+        background: #3498db;
+        color: white;
+        font-size: 12px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    }
+
+
 </style>
 
 <link href="css/MessengerLayout.css" rel="stylesheet" />
 
         <div class="custom-container">
 
-    <div class="sidebar">
-        <!-- User Header -->
+    <div class="sidebar">        
         <div class="sidebar">
             <!-- User Header -->
             <div class="user-header d-flex align-items-center justify-content-between">
@@ -199,8 +244,19 @@
 
                     <ul class="dropdown-menu dropdown-menu-end">
                         <li>
+                            <a class="dropdown-item" href="/">
+                                <i class="bi bi-house"></i> Home
+                            </a>
+                        </li>
+                        <li>
                             <button class="dropdown-item" >
-                                ➕ Create Group
+                                <i class="bi bi-person-fill-add"></i> Create Group
+                                
+                            </button>
+                        </li>
+                        <li>
+                            <button class="dropdown-item text-danger" @onclick="Logout">
+                                <i class="bi bi-box-arrow-right"></i> Logout
                             </button>
                         </li>
                     </ul>
@@ -270,7 +326,7 @@
                                      @onclick="() => SelectConversation(convo)">
                                     <!-- Avatar (initials) -->
                                     <div class="conversation-avatar">
-                                        NA
+                                        @(convo.FullName.Split(' ').Select(n => n[0]).FirstOrDefault())
                                     </div>
 
                                     <!-- Conversation details -->
@@ -295,7 +351,7 @@
                                         <ul class="dropdown-menu dropdown-menu-end">
                                             <li>
                                                 <button class="dropdown-item text-danger"
-                                                        >
+                                                        @onclick="() => DeleteConversation(convo.UserId)">
                                                     🗑 Delete
                                                 </button>
                                             </li>
@@ -392,6 +448,28 @@ else
 {
 
     <div class="d-flex flex-column h-100" style="width:100%">
+        @* message selection buttons   *@
+
+        @if (isSelectionMode)
+            {
+                <div class="d-flex justify-content-end align-items-center gap-2 bg-light">
+                    <span class="text-muted small mt-1">
+                        @selectedMessageIds.Count selected
+                    </span>
+
+                    <button class="btn btn-sm text-danger"
+                            
+                            disabled="@(!selectedMessageIds.Any())"
+                            @onclick="DeleteSelectedMessages">
+                        🗑 Delete
+                    </button>
+
+                    <button class="btn btn-sm"
+                            @onclick="ClearSelection">
+                        ✖ Cancel
+                    </button>
+                </div>
+            }
 
             <!-- CHAT AREA -->
  <!-- MAIN CONTENT -->
@@ -422,20 +500,28 @@ else
                                 </div>
                             </div>
 
-                            <div class="flex-grow-1 border rounded p-2 mb-2 overflow-auto chat-message">
+                            <div class="flex-grow-1 border rounded p-2 mb-2 overflow-auto">
                                 @foreach (var msg in messages)
                                 {
-                                    @* Check if message is sent by current user *@
                                     var isSent = msg.SenderId.ToString() == currentUserId;
+                                    var isSelected = selectedMessageIds.Contains(msg.Id);
 
-                                    <div class="chat-message @(isSent ? "sent" : "received")">
-                                        <strong>
-                                            @(isSent ? "You" : selectedUser.FullName)
-                                        </strong>
-                                        <span class="message-text">@msg.Content</span>
+                                    <div class="message-wrapper @(isSent ? "sent-wrap" : "received-wrap")"
+                                         @onclick="() => OnMessageClick(msg.Id)">
+
+                                        <div class="chat-message @(isSent ? "sent" : "received") @(isSelected ? "selected" : "")">
+                                            <strong>@(isSent ? "You" : selectedUser.FullName)</strong>
+                                            <span class="message-text">@msg.Content</span>
+
+                                            @if (isSelected)
+                                            {
+                                                <span class="selection-tick">✔</span>
+                                            }
+                                        </div>
                                     </div>
                                 }
                             </div>
+
                         }else
                         {
                             <div class="chat-header-fancy">
@@ -511,6 +597,10 @@ else
     List<ConversationDto>? conversations { get; set; }
     ConversationDto? selectedConversation;
     bool isMiniSidebarExpanded = false;
+    bool isSelectionMode = false;
+
+    HashSet<Guid> selectedMessageIds = new();
+
     
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -599,7 +689,6 @@ else
         isMiniSidebarExpanded = !isMiniSidebarExpanded;
     }
 
-
     async Task SelectUser(UserDto user)
     {
         selectedUser = user;
@@ -634,7 +723,6 @@ else
         StateHasChanged();
     }
 
-
     async Task Send()
     {
         if (selectedUser == null || string.IsNullOrWhiteSpace(newMessage)) return;
@@ -651,4 +739,90 @@ else
             InvokeAsync(StateHasChanged);
         }
     }
+
+    void OnMessageClick(Guid messageId)
+    {
+        ToggleMessageSelection(messageId);
+
+        // Auto-enable selection mode
+        isSelectionMode = selectedMessageIds.Any();
+    }
+
+    void ToggleMessageSelection(Guid messageId)
+    {
+        if (selectedMessageIds.Contains(messageId))
+            selectedMessageIds.Remove(messageId);
+        else
+            selectedMessageIds.Add(messageId);
+
+        // Auto-exit selection mode
+        isSelectionMode = selectedMessageIds.Any();
+    }
+
+    void ClearSelection()
+    {
+        selectedMessageIds.Clear();
+        isSelectionMode = false;
+    }
+    
+    async Task DeleteSelectedMessages()
+    {
+        if (!selectedMessageIds.Any())
+            return;
+
+        var success = await MessageService.DeleteMessagesAsync(selectedMessageIds);
+
+        if (!success)
+        {
+            initError = "Failed to delete messages.";
+            return;
+        }
+
+        // ✅ Remove from UI immediately
+        messages.RemoveAll(m => selectedMessageIds.Contains(m.Id));
+
+        // ✅ Reset selection state
+        selectedMessageIds.Clear();
+        isSelectionMode = false;
+
+        StateHasChanged();
+    }
+
+    private async Task DeleteConversation(Guid otherUserId)
+    {
+        if (!await JS.InvokeAsync<bool>("confirm", "Delete this conversation?"))
+            return;
+
+        var success = await MessageService.DeleteConversationAsync(otherUserId);
+        if (success)
+        {
+            // Remove locally
+            conversations.RemoveAll(c => c.UserId == otherUserId);
+            StateHasChanged();
+
+            // Reset chat if this was selected
+            if (selectedUser?.Id == otherUserId)
+                selectedUser = null;
+        }
+    }
+
+    private async Task Logout()
+    {
+        // 🔥 1. Disconnect SignalR
+        await Hub.DisconnectAsync();
+
+        // 2. Remove token
+        await JS.InvokeVoidAsync("deleteCookie", "access_token");
+
+        // 3. Update auth state
+        if (AuthProvider is JWTAuthenticationStateProvider jwtAuth)
+        {
+            jwtAuth.MarkAsUnauthorize();
+        }
+
+        // 4. Redirect
+        Nav.NavigateTo("/login", true);
+    }
+
+
 }

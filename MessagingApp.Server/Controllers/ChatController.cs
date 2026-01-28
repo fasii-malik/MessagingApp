@@ -78,6 +78,42 @@ namespace MessagingApp.Server.Controllers
             }
         }
 
+        [HttpDelete("delete-messages")]
+        public async Task<IActionResult> DeleteMessages(
+            [FromBody] DeleteMessagesRequest request)
+        {
+            if (request.MessageIds == null || !request.MessageIds.Any())
+                return BadRequest("No message IDs provided.");
+
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+            if (string.IsNullOrEmpty(userIdClaim))
+                return Unauthorized();
+
+            var currentUserId = Guid.Parse(userIdClaim);
+
+            await _messageService.DeleteMessagesAsync(
+                request.MessageIds,
+                currentUserId);
+
+            return NoContent(); // ✅ standard REST response
+        }
+
+        [HttpDelete("delete-conversation/{otherUserId}")]
+        public async Task<IActionResult> DeleteConversation(Guid otherUserId)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                    ?? User.FindFirst("sub")?.Value; // Current user Id from JWt
+
+            if (userId == null)
+                return Unauthorized();
+
+            await _messageService.DeleteConversationAsync(Guid.Parse(userId), otherUserId);
+
+            return Ok(new { Message = "Conversation deleted successfully" });
+        }
+
+
     }
 
 }

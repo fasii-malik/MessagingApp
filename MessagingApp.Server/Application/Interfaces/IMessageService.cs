@@ -9,5 +9,7 @@ namespace MessagingApp.Server.Application.Interfaces
         Task<List<Message>> GetChatAsync(string userAId, string userBId);
         Task<List<UserDto>> GetAllUsersAsync(string currentUserId);
         Task<List<ConversationDto>> GetConversationsAsync(string currentUserId);
+        Task DeleteMessagesAsync(IEnumerable<Guid> messageIds, Guid currentUserId);
+        Task DeleteConversationAsync(Guid currentUserId, Guid otherUserId);
     }
 }
