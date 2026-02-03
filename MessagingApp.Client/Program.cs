@@ -17,6 +17,8 @@ builder.Services.AddScoped<CookieService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<ChatHubClient>();
 builder.Services.AddScoped<MessageService>();
+builder.Services.AddScoped<GroupMessageService>();
+builder.Services.AddScoped<GroupService>();
 
 
 // HttpClient (cookies enabled)
@@ -29,6 +31,10 @@ builder.Services.AddHttpClient("Api", client =>
     UseCookies = true,
     CookieContainer = new System.Net.CookieContainer()
 });
+
+// In YOUR.Client/Program.cs
+builder.Services.AddDevExpressBlazor();
+
 
 //builder.Services.AddScoped(sp =>
 //{

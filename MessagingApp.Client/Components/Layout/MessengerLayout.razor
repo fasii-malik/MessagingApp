@@ -1,10 +1,14 @@
-﻿@inherits LayoutComponentBase
+﻿@using DevExpress.Blazor
+@inherits LayoutComponentBase
 
+<DxToastProvider HorizontalAlignment="HorizontalAlignment.Right"
+                 VerticalAlignment="VerticalEdge.Top" />
+<DxDialogProvider />
     <!-- Main Chat Area -->
     <div>
+          
         @Body
     </div>
-
 
 @code {
 

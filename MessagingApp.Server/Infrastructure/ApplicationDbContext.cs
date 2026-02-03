@@ -14,6 +14,9 @@ namespace MessagingApp.Server.Infrastructure
         public DbSet<RefreshToken> RefreshTokens { get; set; }
         public DbSet<UserPermission> UserPermissions { get; set; }
         public DbSet<Message> Messages { get; set; }
+        public DbSet<GroupMessage> GroupMessages { get; set; }
+        public DbSet<ChatGroup> ChatGroups { get; set; }
+        public DbSet<GroupMember> GroupMembers { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

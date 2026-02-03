@@ -16,5 +16,7 @@ namespace MessagingApp.Server.Domain.Repositories
         void Remove(User user);
 
         Task<IEnumerable<User>?> GetAllUsersAsync();
+
+        Task<bool> ExistsAsync(Guid userId);
     }
 }

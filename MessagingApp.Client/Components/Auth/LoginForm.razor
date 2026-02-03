@@ -1,5 +1,7 @@
 ﻿@inject AuthService Auth
-@inject IJSRuntime JS
+
+@using DevExpress.Blazor
+@inject IToastNotificationService ToastService
 
 <link href="css/LoginForm.css" rel="stylesheet" />
 
@@ -65,13 +67,19 @@
 
             if (success)
             {
-               // await JS.InvokeVoidAsync("alert", "Login Successfull!");
+               
                 await OnSuccess.InvokeAsync();
             }
             else
             {
-                //await JS.InvokeVoidAsync("alert", "Invalid email or password!");
-                error = "Invalid email or password";
+                ToastService.ShowToast(new ToastOptions
+                    {
+                        Title = "Auth!",
+                        Text = "Login Failed.",
+                        RenderStyle = ToastRenderStyle.Danger,
+                        DisplayTime = TimeSpan.FromSeconds(5)
+                    });
+                
             }
         }
         catch (Exception ex)

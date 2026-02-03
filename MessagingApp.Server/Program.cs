@@ -38,7 +38,14 @@ builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 builder.Services.AddScoped<IRefreshTokenService, RefreshTokenService>();
 
+
+
 builder.Services.AddHostedService<TokenCleanupBackgroundService>();
+
+builder.Services.AddScoped<IGroupRepository, GroupRepository>();
+builder.Services.AddScoped<IGroupMessageService, GroupMessageService>();
+builder.Services.AddScoped<IGroupMessageRepository, GroupMessageRepository>();
+builder.Services.AddScoped<IGroupService, GroupService>();
 
 builder.Services.AddScoped<IMessageRepository, MessageRepository>();
 builder.Services.AddScoped<IMessageService, MessageService>();

@@ -56,24 +56,21 @@ namespace MessagingApp.Server.Application.Repositories
         }
 
 
-            public async Task<IEnumerable<User>?> GetAllUsersAsync()
+        public async Task<IEnumerable<User>?> GetAllUsersAsync()
             {
                 var users = await _context.Users
                     .Include(p => p.Permissions)
                     .AsNoTracking()
                     .ToListAsync();
 
-                // Log number of users retrieved
-                _logger.LogInformation("GetAllUsersAsync returned {Count} users", users.Count);
-
-                // Optional: log details of first few users
-                foreach (var u in users.Take(5)) // only first 5 to avoid huge logs
-                {
-                    var permNames = u.Permissions.Select(p => p.Permission).ToList();
-                    _logger.LogInformation("User: {Name}, Permissions: {@Permissions}", u.FullName, permNames);
-                }
-
                 return users;
             }
+
+        public async Task<bool> ExistsAsync(Guid userId)
+        {
+            return await _context.Users
+                .AsNoTracking()
+                .AnyAsync(u => u.Id == userId);
         }
+    }
 }

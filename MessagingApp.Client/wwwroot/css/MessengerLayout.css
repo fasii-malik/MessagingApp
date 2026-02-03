@@ -211,3 +211,33 @@
         background: #999;
     }
 
+/* ===================== */
+/* 📱 MOBILE RESPONSIVE */
+/* ===================== */
+@media (max-width: 768px) {
+
+    /* MAIN LAYOUT */
+    .custom-container {
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    /* CHAT AREA MUST EXIST */
+    .chat-container {
+        display: none;
+        height: 100vh;
+        width: 100%;
+        flex-direction: column;
+        background: #fff;
+    }
+
+    /* WHEN CHAT IS OPEN */
+    .chat-open .chat-container {
+        display: flex !important;
+    }
+
+    /* HIDE SIDEBAR WHEN CHAT OPEN */
+    .chat-open .sidebar {
+        display: none !important;
+    }
+}

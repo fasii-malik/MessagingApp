@@ -1,0 +1,232 @@
+﻿@page "/create-group"
+@inject GroupService GroupService
+@inject UserService UserService
+@inject NavigationManager Nav
+@inject IJSRuntime JS
+@rendermode InteractiveServer
+@using DevExpress.Blazor
+@inject IToastNotificationService ToastService
+
+<link href="css/CreateGroup.css" rel="stylesheet" />
+
+<div class="create-group-container">
+        <div class="group-header">
+            <h1>Create New Group</h1>
+            <p>Connect with your team and start collaborating</p>
+        </div>
+
+        <form class="group-form" @onsubmit="HandleSubmit" @onsubmit:preventDefault>
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <div style="color: #ff4757; padding: 10px; background: rgba(255,71,87,0.1); border-radius: 8px; margin-bottom: 15px;">
+                ⚠️ @errorMessage
+            </div>
+        }
+            <!-- Group Name -->
+            <div class="form-group">
+                <label class="form-label">Group Name *</label>
+            <input type="text" class="form-input"
+                   placeholder="Enter group name..."
+                   @bind="newGroup.Name"
+                   required>
+            </div>
+
+            <!-- Group Description -->
+            <div class="form-group">
+                <label class="form-label">Description</label>
+            <textarea class="form-input form-textarea"
+                      placeholder="What's this group about?"
+                      @bind="newGroup.Description"
+                      @oninput="OnDescriptionInput"
+                      maxlength="500"></textarea>
+            <div class="char-count">@charCount</div>
+            </div>
+
+            <!-- Group Avatar -->
+            <div class="form-group">
+                <label class="form-label">Group Picture</label>
+                <div class="avatar-upload">
+                    <div class="avatar-preview">GRP</div>
+                    <div class="file-input-wrapper">
+                        <label class="file-input-btn">
+                            📷 Choose Picture
+                            <input type="file" accept="image/*">
+                        </label>
+                        <p style="font-size: 12px; color: #65676b; margin-top: 8px;">Max size: 5MB</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Members Section -->
+            <div class="members-section">
+                <label class="form-label">Select Members</label>
+
+                
+                    <!-- Sample Members with Checkboxes -->
+                <div class="members-list">
+                    @if (allUsers == null || !allUsers.Any())
+                    {
+                        <p class="text-muted">Loading users...</p>
+                    }
+                    else
+                    {
+                        @foreach (var user in allUsers)
+                        {
+                            <label class="member-item">
+                                <div class="member-info">
+                                    <input type="checkbox"
+                                           class="member-checkbox"
+                                           @onchange="(e) => OnMemberCheckboxChanged(user.Id, e)">
+                                    <div class="member-avatar">@GetUserInitials(user.FullName)</div>
+                                    <span class="member-name">@user.FullName</span>
+                                </div>
+                              @*   <span class="member-status @(user.IsOnline ? "" : "offline")">
+                                    @(user.IsOnline ? "Online" : "Offline")
+                                </span> *@
+                            </label>
+                        }
+                    }
+                </div>
+                
+            </div>
+
+            <!-- Action Buttons -->
+        <div class="form-actions">
+            <button type="button" class="btn btn-secondary" @onclick="Cancel" disabled="@isLoading">
+                Cancel
+            </button>
+            <button type="submit" class="btn btn-primary" disabled="@isLoading">
+                @(isLoading ? "Creating..." : "Create Group")
+            </button>
+        </div>
+        </form>
+    </div>
+
+@code {
+    private CreateGroupDto newGroup = new CreateGroupDto();
+    private List<UserRequest> allUsers = new();
+    private List<Guid> selectedMemberIds = new();
+    private string charCount = "0";
+    private string? errorMessage;
+    private bool isLoading = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Load all users when page loads
+            allUsers = await UserService.GetUsersAsync();
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to load users: {ex.Message}";
+        }
+    }
+
+    private void OnMemberCheckboxChanged(Guid userId, ChangeEventArgs e)
+    {
+        bool isChecked = (bool)e.Value;
+
+        if (isChecked)
+        {
+            if (!selectedMemberIds.Contains(userId))
+            {
+                selectedMemberIds.Add(userId);
+            }
+        }
+        else
+        {
+            selectedMemberIds.Remove(userId);
+        }
+    }
+
+    private void OnDescriptionInput(ChangeEventArgs e)
+    {
+        string description = e.Value?.ToString() ?? "";
+        charCount = $"{description.Length} / 500";
+        newGroup.Description = description;
+    }
+
+    private async Task HandleSubmit()
+    {
+        await JS.InvokeVoidAsync("window.scrollTo", 0, 0);
+
+        if (string.IsNullOrWhiteSpace(newGroup.Name))
+        {
+            errorMessage = "Group name is required";
+            StateHasChanged();
+            return;
+        }
+
+        if (selectedMemberIds.Count == 0)
+        {
+            errorMessage = "Please select at least one member";
+            StateHasChanged();
+            return;
+        }
+
+        isLoading = true;
+        errorMessage = null;
+        StateHasChanged();
+
+        try
+        {            
+            // Check if CreateGroupDto has MemberIds property
+            newGroup.MemberIds = selectedMemberIds;
+
+            var result = await GroupService.CreateGroupAsync(newGroup);
+
+            Console.WriteLine($"Group created: {result?.Id}");
+
+            if (result != null)
+            {
+                ToastService.ShowToast(new ToastOptions
+                    {
+                        Title = "Success!",
+                        Text = "Group Created successfully.",
+                        RenderStyle = ToastRenderStyle.Success,
+                        DisplayTime = TimeSpan.FromSeconds(5)
+                    });
+
+                // Wait for 1-2 seconds so the user sees the toast
+                await Task.Delay(1500);
+                Nav.NavigateTo("/chatpage");
+            }
+            else
+            {
+                errorMessage = "Failed to create group - no result returned";
+                ToastService.ShowToast(new ToastOptions
+                    {
+                        Title = "Danger!",
+                        Text = "Failed To Create Group.",
+                        RenderStyle = ToastRenderStyle.Danger,
+                        DisplayTime = TimeSpan.FromSeconds(5),
+                        ThemeMode = ToastThemeMode.Pastel
+                    });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+            errorMessage = $"Failed to create group: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void Cancel()
+    {
+        Nav.NavigateTo("/chatpage");
+    }
+
+    private string GetUserInitials(string fullName)
+    {
+        if (string.IsNullOrEmpty(fullName)) return "NA";
+
+        var parts = fullName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        return string.Concat(parts.Select(n => n[0])).ToUpper();
+    }
+}

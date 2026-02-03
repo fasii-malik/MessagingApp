@@ -1,4 +1,29 @@
-﻿@inherits LayoutComponentBase
+﻿@using DevExpress.Blazor
+@inherits LayoutComponentBase
+
+<style>
+    /* ===========================
+   MOBILE NAV FIX (LAYOUT)
+=========================== */
+
+@@media (max-width: 768px) {
+
+    .page {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        display: none !important;
+    }
+
+    main nav,
+    main .navbar {
+        display: block !important;
+    }
+}
+
+
+</style>
 
 <div class="page">
     <div class="sidebar">
@@ -7,6 +32,10 @@
 
     <main>
         <NavBar />
+
+        <DxToastProvider HorizontalAlignment="HorizontalAlignment.Right" 
+                 VerticalAlignment="VerticalEdge.Top" />
+
 
         <article class="px-4">
             @Body

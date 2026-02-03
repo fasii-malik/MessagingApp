@@ -15,7 +15,10 @@ public class ChatHubClient
     public event Action<string>? UserOnline;
     public event Action<string>? UserOffline;
     public event Action<MessageDto>? MessageReceived;
+    public event Action<GroupMessageDto>? GroupMessageReceived;
     public event Action<List<string>>? SetOnlineUsers;
+    
+
 
     public async Task ConnectAsync(string token, NavigationManager nav)
     {
@@ -52,7 +55,10 @@ public class ChatHubClient
         _connection.On<string>("UserOnline", id => UserOnline?.Invoke(id));
         _connection.On<string>("UserOffline", id => UserOffline?.Invoke(id));
         _connection.On<MessageDto>("ReceiveMessage", msg => MessageReceived?.Invoke(msg));
+        _connection.On<GroupMessageDto>("ReceiveGroupMessage", msg => GroupMessageReceived?.Invoke(msg));
         _connection.On<List<string>>("SetOnlineUsers", ids => SetOnlineUsers?.Invoke(ids));
+        
+
 
         try
         {
@@ -71,6 +77,25 @@ public class ChatHubClient
         if (_connection != null)
             await _connection.SendAsync("SendMessage", receiverId, message);
     }
+
+    public async Task SendGroupMessageAsync(Guid groupId, Guid senderId, string message)
+    {
+        if (_connection != null)
+            await _connection.SendAsync("SendGroupMessage", groupId, senderId, message);
+    }
+
+    public async Task JoinGroupAsync(Guid groupId)
+    {
+        if (_connection != null)
+            await _connection.SendAsync("JoinGroup", groupId);
+    }
+
+    public async Task LeaveGroupAsync(Guid groupId)
+    {
+        if (_connection != null)
+            await _connection.SendAsync("LeaveGroup", groupId);
+    }
+
 
     public async Task DisconnectAsync()
     {

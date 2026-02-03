@@ -8,6 +8,7 @@ namespace MessagingApp.Client.Security
     public class JWTAuthenticationStateProvider : AuthenticationStateProvider
     {
         private readonly CookieService _cookieService;
+        public bool IsTokenExpired { get; private set; } = false;
 
         public JWTAuthenticationStateProvider(CookieService cookieService)
         {
@@ -25,6 +26,20 @@ namespace MessagingApp.Client.Security
 
 
                 var readJWT = new JwtSecurityTokenHandler().ReadJwtToken(token);
+
+                // ✅ Check token expiration
+                var expClaim = readJWT.Claims.FirstOrDefault(c => c.Type == "exp")?.Value;
+                if (!string.IsNullOrEmpty(expClaim))
+                {
+                    var expTime = DateTimeOffset.FromUnixTimeSeconds(long.Parse(expClaim));
+                    if (expTime < DateTimeOffset.UtcNow)
+                    {
+                        // Token expired
+                        await MarkAsUnauthorize(true); // mark token as expired
+                        return new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
+                    }
+                }
+
                 var claims = readJWT.Claims.ToList();
 
                 // Normalize role claim
@@ -49,10 +64,12 @@ namespace MessagingApp.Client.Security
             }            
         }
 
-        public async Task<AuthenticationState> MarkAsUnauthorize()
+        public async Task<AuthenticationState> MarkAsUnauthorize(bool tokenExpired = false)
         {
             try
             {
+                IsTokenExpired = tokenExpired;
+
                 var state = new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
                 NotifyAuthenticationStateChanged(Task.FromResult(state));
 

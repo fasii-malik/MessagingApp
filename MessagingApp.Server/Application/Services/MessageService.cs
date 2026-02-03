@@ -91,43 +91,47 @@ namespace MessagingApp.Server.Application.Services
 
         public async Task<List<ConversationDto>> GetConversationsAsync(string currentUserId)
         {
-            // 1️⃣ Get all messages involving current user
-            var messages = await _repo.GetAllMessagesForUserAsync(currentUserId);
+            var currentUserGuid = Guid.Parse(currentUserId);
 
-            // 2️⃣ Extract distinct other users
-            var otherUserIds = messages
-                .Select(m =>
-                    m.SenderId.ToString() == currentUserId
-                        ? m.ReceiverId.ToString()
-                        : m.SenderId.ToString())
-                .Distinct()
+            // 1️⃣ Get last message per conversation directly from DB
+            var lastMessages = await _repo.GetAllMessagesForUserAsync(currentUserId);
+
+            var conversations = lastMessages
+                .GroupBy(m => m.SenderId == currentUserGuid ? m.ReceiverId : m.SenderId) // group by other user
+                .Select(g =>
+                {
+                    var lastMsg = g.OrderByDescending(m => m.CreatedAt).First();
+
+                    return new
+                    {
+                        OtherUserId = g.Key,
+                        LastMessage = lastMsg.Content,
+                        LastMessageTime = lastMsg.CreatedAt
+                    };
+                })
+                .OrderByDescending(x => x.LastMessageTime)
                 .ToList();
 
-            var conversations = new List<ConversationDto>();
-
-            // 3️⃣ For each user → get last message
-            foreach (var otherUserId in otherUserIds)
+            // 2️⃣ Map to DTO
+            var conversationDtos = new List<ConversationDto>();
+            foreach (var convo in conversations)
             {
-                var lastMessage = await _repo.GetLastMessageAsync(currentUserId, otherUserId);
-                var user = await _userRepo.GetByIdAsync(Guid.Parse(otherUserId));
+                var user = await _userRepo.GetByIdAsync(convo.OtherUserId);
+                if (user == null) continue;
 
-                if (lastMessage == null || user == null) continue;
-
-                conversations.Add(new ConversationDto
+                conversationDtos.Add(new ConversationDto
                 {
                     UserId = user.Id,
                     FullName = user.FullName,
-                    LastMessage = lastMessage.Content,
-                    LastMessageTime = lastMessage.CreatedAt,
+                    LastMessage = convo.LastMessage,
+                    LastMessageTime = convo.LastMessageTime,
                     IsOnline = _userConnectionService.IsOnline(user.Id.ToString())
                 });
             }
 
-            // 4️⃣ Sort like WhatsApp
-            return conversations
-                .OrderByDescending(c => c.LastMessageTime)
-                .ToList();
+            return conversationDtos;
         }
+
 
         public async Task DeleteMessagesAsync(IEnumerable<Guid> messageIds, Guid currentUserId)
         {

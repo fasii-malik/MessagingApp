@@ -7,11 +7,13 @@ namespace MessagingApp.Server.Hubs
     {
         private readonly IMessageService _messageService;
         private readonly IUserConnectionService _connections;
+        private readonly IGroupMessageService _groupMessageService;
 
-        public ChatHub(IMessageService messageService, IUserConnectionService connections)
+        public ChatHub(IMessageService messageService, IUserConnectionService connections, IGroupMessageService groupMessageService)
         {
             _messageService = messageService;
             _connections = connections;
+            _groupMessageService = groupMessageService;
         }
 
         public override async Task OnConnectedAsync()
@@ -46,6 +48,15 @@ namespace MessagingApp.Server.Hubs
             await base.OnDisconnectedAsync(ex);
         }
 
+        public async Task JoinGroup(Guid groupId)
+        {
+            await Groups.AddToGroupAsync(Context.ConnectionId, groupId.ToString());
+        }
+
+        public async Task LeaveGroup(Guid groupId)
+        {
+            await Groups.RemoveFromGroupAsync(Context.ConnectionId, groupId.ToString());
+        }
 
         public async Task SendMessage(string receiverId, string content)
         {
@@ -54,19 +65,27 @@ namespace MessagingApp.Server.Hubs
             // Save and cache
             var message = await _messageService.SendMessageAsync(senderId, receiverId, content);
 
-            // Send to receiver if online
-            //if (_connections.IsOnline(receiverId))
-            //{
+            // Send to receiver  
                 var connectionIds = _connections.GetConnectionIds(receiverId);
                 foreach (var connId in connectionIds)
                 {
                     await Clients.Client(connId).SendAsync("ReceiveMessage", message);
-                }
-           // }
-
+                }    
 
             // Send back to sender
             await Clients.Caller.SendAsync("ReceiveMessage", message);
         }
+
+        public async Task SendGroupMessage(Guid groupId, Guid senderId, string message)
+        {            
+
+            var msg = await _groupMessageService.SendGroupMessageAsync(groupId, senderId, message);
+
+            await Clients.Group(groupId.ToString())
+    .SendAsync("ReceiveGroupMessage", msg);
+
+        }
+
+
     }
 }

@@ -1,13 +1,12 @@
 ﻿@inject AuthService Auth
+@using DevExpress.Blazor
+@inject IToastNotificationService ToastService
 
 <link href="css/RegisterForm.css" rel="stylesheet" />
 
 <EditForm Model="model" OnValidSubmit="Submit" FormName="RegisterForm">
     @* 1. Add the Validator component *@
     <DataAnnotationsValidator />
-
-    @* Optional: Displays a list of all errors at the top *@
-    <ValidationSummary />
 
     <div class="registration-page">
         <div class="registration-container">
@@ -47,10 +46,6 @@
                     I agree to the <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>
                 </label>
             </div>
-            @if (isSuccess)
-            {
-                <div class="alert alert-success mt-3">Successfully Registered.</div>
-            }
 
             <button type="submit" disabled="@isLoading">Create Account</button>
 
@@ -65,7 +60,6 @@
 @code {
     private RegisterRequest model = new();
     private bool isLoading;
-    private bool isSuccess;
     private string? error;
 
     [Parameter] public EventCallback OnSuccess { get; set; }    
@@ -90,11 +84,24 @@
                 await OnSuccess.InvokeAsync();
                 model = new RegisterRequest();
 
-                isSuccess = true;                
+                ToastService.ShowToast(new ToastOptions
+                    {
+                        Title = "Register!",
+                        Text = "Successfully Registered.",
+                        RenderStyle = ToastRenderStyle.Success,
+                        DisplayTime = TimeSpan.FromSeconds(5)
+                    });                             
             }
             else
             {
-                error = "Invalid email or password";                
+                error = "Invalid email or password";   
+                ToastService.ShowToast(new ToastOptions
+                    {
+                        Title = "Register!",
+                        Text = "Registration Failed.",
+                        RenderStyle = ToastRenderStyle.Danger,
+                        DisplayTime = TimeSpan.FromSeconds(5)
+                    });
             }
         }
         catch (Exception ex)
