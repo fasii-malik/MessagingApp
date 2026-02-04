@@ -2,151 +2,162 @@
 @rendermode InteractiveServer
 @inject UserService UserService
 @inject NavigationManager Nav;
+@using DevExpress.Blazor
+@inject IToastNotificationService ToastService
+@inject IDialogService DialogService
+@inject IJSRuntime JS
 
 <link href="css/Permissions.css" rel="stylesheet" />
-
+<div class="container">
 <EditForm Model="model" OnValidSubmit="AssignPermission">
 
-<div class="container">
-    <!-- Page Header -->
-    <div class="page-header">
-        <div class="breadcrumb">
-            <a href="#">Dashboard</a>
-            <span>→</span>
-            <a href="#">Users</a>
-            <span>→</span>
-            <span>Set Permissions</span>
+    
+        <!-- Page Header -->
+        <div class="page-header mt-2">
+            <div class="breadcrumb">
+                <a href="/dashboard">Dashboard</a>
+                <span>→</span>
+                <span>Set Permissions</span>
+            </div>
+            <h1>Set User Permissions</h1>
+            <p>Grant or revoke specific permissions for this user</p>
         </div>
-        <h1>Set User Permissions</h1>
-        <p>Grant or revoke specific permissions for this user</p>
-    </div>
 
-    <!-- Success Message -->
-    <div class="success-message" id="successMessage">
-        <span class="success-icon">✅</span>
-        <span class="success-text">Permissions updated successfully!</span>
-    </div>
+        <!-- Success Message -->
+        <div class="success-message" id="successMessage">
+            <span class="success-icon">✅</span>
+            <span class="success-text">Permissions updated successfully!</span>
+        </div>
 
-    <!-- All User -->
-    <div class="card">
-        <h3>Select User</h3>
+        <!-- All User -->
+        <div class="card">
+            <h3 class="ms-3">Select User</h3>
 
-        <InputRadioGroup @bind-Value="model.UserId" Name="selectedUser">
+            <div class="table-responsive">
 
-        <table class="users-table">
-            <thead>
-                <tr>
-                    <th></th>
-                    <th>User</th>
-                    <th>Current Role</th>
-                    <th>Permissions</th>
-                    <th>Status</th>
-                </tr>
-            </thead>
+                <InputRadioGroup @bind-Value="model.UserId" Name="selectedUser">
 
-            <tbody>
-
-                @if (isLoading)
-                {
-                    <tr><td colspan="4">Loading users...</td></tr>
-                }
-                else if (users == null || !users.Any())
-                {
-                    <tr><td colspan="4">No users found</td></tr>
-                }
-                else
-                {
-                    
-
-                        @foreach (var user in users)
-                        {
-                            <tr class="@(model.UserId == user.Id.ToString() ? "selected-row" : "")"
-                                @onclick="() => model.UserId = user.Id.ToString()">
-
-                                <td>
-                                    <InputRadio Value="@user.Id" />
-                                </td>
-
-                                <td>
-                                    <strong>@user.FullName</strong><br />
-                                    <small>@user.Email</small>
-                                </td>
-
-                                <td>@GetRoleName(user.Role)</td>
-
-
-                                    <td>@string.Join(", ", user.Permissions.Select(p => GetPermissionName(p)))</td>
-                                    
-
-                                <td>
-                                    <span class="badge active">Active</span>
-                                </td>
+                    <table class="users-table">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                <th>User</th>
+                                <th>Current Role</th>
+                                <th>Permissions</th>
+                                
                             </tr>
-                        }
+                        </thead>
 
-                    
-                }
+                        <tbody>
 
-            </tbody>
-        </table>
-        </InputRadioGroup>
-    </div>
+                            @if (isLoading)
+                            {
+                                <tr><td colspan="4">Loading users...</td></tr>
+                            }
+                            else if (users == null || !users.Any())
+                            {
+                                <tr><td colspan="4">No users found</td></tr>
+                            }
+                            else
+                            {
 
-    <!-- Permissions Card -->
-    <div class="permissions-card">
-        <div class="card-header">
-            <h3 class="card-title">
-                <span>🔐</span>
-                <span>Available Permissions</span>
-            </h3>
-            <button type="button" class="select-all-btn" @onclick="SelectAll">Select All</button>
+
+                                @foreach (var user in users)
+                                {
+                                    <tr class="@(model.UserId == user.Id.ToString() ? "selected-row" : "")"
+                                        @onclick="() => model.UserId = user.Id.ToString()">
+
+                                        <td>
+                                            <InputRadio Value="@user.Id.ToString()" class="custom-radio" />
+                                        </td>
+
+                                        <td>
+                                            <strong>@user.FullName</strong><br />
+                                            <small>@user.Email</small>
+                                        </td>
+
+                                        <td>
+                                            <span class="badge rounded-pill @GetRoleBadgeClass(user.Role)">
+                                                @GetRoleName(user.Role)
+                                            </span>
+                                        </td>
+
+
+                                        <td>@string.Join(", ", user.Permissions.Select(p => GetPermissionName(p)))</td>
+                                    </tr>
+                                }
+
+
+                            }
+
+                        </tbody>
+                    </table>
+                </InputRadioGroup>
+            </div>
         </div>
+        <!-- Permissions Card -->
+        <div class="permissions-card mt-3">
+            <div class="card-header">
+                <h3 class="card-title">
+                    <span>🔐</span>
+                    <span>Available Permissions</span>
+                </h3>
+                <button type="button" class="select-all-btn" @onclick="SelectAll">Select All</button>
+            </div>
 
             <div class="permissions-grid">
                 @foreach (var permissionId in new[] { 0, 1, 2, 3 })
                 {
-                    <div class="permission-card">
-                        @* Use a checkbox and handle the logic manually *@
+                    <div class="permission-card @(model.Permissions.Contains(permissionId) ? "checked" : "")"
+                         @onclick="() => TogglePermissionCard(permissionId)">
+
                         <input type="checkbox"
+                               class="permission-checkbox"
                                checked="@model.Permissions.Contains(permissionId)"
                                @onchange="@((e) => TogglePermission(permissionId, e.Value))" />
 
                         <div class="permission-name">@GetPermissionName(permissionId)</div>
-                        @* ... rest of your UI ... *@
+
                     </div>
                 }
             </div>
 
-    </div>
+
+        </div>
 
         @if (hasError)
         {
             <div class="alert alert-danger mt-3">Access Denied. You donot have permission.</div>
         }
 
-    <!-- Summary -->
+        <!-- Summary -->
+        <div class="permissions-summary">
+            <div class="summary-content">
+                <div class="action-buttons">
+
+                    <button class="btn btn-primary w-40" type="submit">💾 Save Permissions</button>
+                </div>
+            </div>
+        </div>
+</EditForm>
+
     <div class="permissions-summary">
         <div class="summary-content">
-            <div class="action-buttons">                
-              
-                <button class="btn btn-primary w-40" type="submit">💾 Save Permissions</button>
+            <div class="action-buttons">
+                <button type="button" class="btn btn-secondary w-40" @onclick="RemovePermission"
+                @onclick:preventDefault>
+                    Remove Permissions
+                </button>
+
+                <a href="/dashboard" class="btn btn-secondary w-40">
+                    Cancel
+                </a>
             </div>
         </div>
     </div>
-</div>
+</div> @* container end *@
 
-</EditForm>
 
-<div class="permissions-summary">
-    <div class="summary-content">
-        <div class="action-buttons">
-            <button type="button" class="btn btn-secondary w-40" @onclick="RemovePermission"
-            @onclick:preventDefault>
-                Remove Permissions
-            </button>
-        </div>
-    </div>
-</div>
 
 @code {
     private PermissionsRequest model = new() { Permissions = new List<int>() };
@@ -163,11 +174,32 @@
 
     private async Task AssignPermission()
     {
+        bool confirmed = await DialogService.ConfirmAsync(new MessageBoxOptions()
+            {
+                Title = "Confirm Action",
+                Text = "Are you sure you want to assign permission/s?",
+                RenderStyle = MessageBoxRenderStyle.Warning,
+                OkButtonText = "Yes",
+                CancelButtonText = "Cancel"
+            });
 
-        bool success = await UserService.AssignPermissionAsync(model);        
+        if (!confirmed) return;
+
+        bool success = await UserService.AssignPermissionAsync(model);
 
         if (success)
         {
+            await JS.InvokeVoidAsync("window.scrollTo", 0, 0);
+
+                     ToastService.ShowToast(new ToastOptions
+                {
+                    Title = "Success!",
+                    Text = "Assigned successfully.",
+                    RenderStyle = ToastRenderStyle.Success,
+                    DisplayTime = TimeSpan.FromSeconds(5),
+                    ThemeMode = ToastThemeMode.Pastel
+                });
+
             model = new PermissionsRequest { Permissions = new List<int>() };
             users = await UserService.GetUsersAsync();
         }
@@ -175,21 +207,41 @@
         {
             hasError = true;
         }
-        
+
     }
 
     private async Task RemovePermission()
     {
 
-        bool success = await UserService.RemovePermissionAsync(model);        
+        bool success = await UserService.RemovePermissionAsync(model);
 
         if (success)
         {
+            await JS.InvokeVoidAsync("window.scrollTo", 0, 0);
+
+            ToastService.ShowToast(new ToastOptions
+                {
+                    Title = "Success!",
+                    Text = "Removed successfully.",
+                    RenderStyle = ToastRenderStyle.Success,
+                    DisplayTime = TimeSpan.FromSeconds(5),
+                    ThemeMode = ToastThemeMode.Pastel
+                });
+
             model = new PermissionsRequest { Permissions = new List<int>() };
-            users = await UserService.GetUsersAsync();            
+            users = await UserService.GetUsersAsync();
         }
 
     }
+
+    private string GetRoleBadgeClass(int role) => role switch
+    {
+        1 => "bg-light text-dark",   // User
+        2 => "bg-warning text-dark", // Admin
+        3 => "bg-danger",           // Super Admin
+        _ => "bg-secondary"         // Unknown
+    };
+
 
     private string GetRoleName(int role) => role switch
     {
@@ -222,8 +274,28 @@
         }
     }
 
+    private void TogglePermissionCard(int permissionId)
+    {
+        if (model.Permissions.Contains(permissionId))
+            model.Permissions.Remove(permissionId);
+        else
+            model.Permissions.Add(permissionId);
+    }
+
+
     private void SelectAll()
     {
-        model.Permissions = new List<int> { 0, 1, 2, 3 };
+        var allPermissions = new List<int> { 0, 1, 2, 3 };
+
+        // If the count is the same, we assume all are selected and we clear them
+        if (model.Permissions.Count == allPermissions.Count)
+        {
+            model.Permissions.Clear();
+        }
+        else
+        {
+            // Otherwise, select everything
+            model.Permissions = allPermissions;
+        }
     }
 }

@@ -1,4 +1,5 @@
-﻿using MessagingApp.Server.Domain.Entities;
+﻿using MessagingApp.Server.Application.Dtos;
+using MessagingApp.Server.Domain.Entities;
 using MessagingApp.Server.Domain.Enums;
 
 namespace MessagingApp.Server.Application.Interfaces

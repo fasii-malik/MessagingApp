@@ -3,6 +3,9 @@
 @inject UserService UserService
 @inject NavigationManager Nav
 
+@using DevExpress.Blazor
+@inject IToastNotificationService ToastService
+@inject IDialogService DialogService
 
 <link href="css/EditUser.css" rel="stylesheet" />
 
@@ -48,9 +51,9 @@
         }
 
         <div class="form-actions">
-            <button type="button" class="btn btn-secondary" onclick="">
+            <a href="/dashboard" class="btn btn-secondary">
                 Cancel
-            </button>
+            </a>
             <button type="submit" class="btn btn-primary">
                 Save Changes
             </button>
@@ -97,12 +100,28 @@
 
             if (success)
             {
-                Console.WriteLine("User updated successfully");
+            
+                ToastService.ShowToast(new ToastOptions
+                {
+                    Title = "Success!",
+                    Text = "Updated successfully.",
+                    RenderStyle = ToastRenderStyle.Success,
+                    DisplayTime = TimeSpan.FromSeconds(5),
+                    ThemeMode = ToastThemeMode.Pastel
+                });
+
                 Nav.NavigateTo("/dashboard");
             }
             else
             {
-                Console.WriteLine("Failed to update user");
+            ToastService.ShowToast(new ToastOptions
+                {
+                    Title = "Failed!",
+                    Text = "Cannot Update User!",
+                    RenderStyle = ToastRenderStyle.Danger,
+                    DisplayTime = TimeSpan.FromSeconds(5),
+                    ThemeMode = ToastThemeMode.Pastel
+                });
                 hasError = true;
             }
         }

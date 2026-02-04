@@ -251,3 +251,20 @@
     color: #65676b;
     margin-top: 5px;
 }
+
+
+@media (max-width: 768px) {
+    article[b-w9suj62898] {
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+    }
+    .group-form {
+        padding: 25px;
+    }
+    .create-group-container {
+        margin-top: 0;
+        margin-bottom: 0;
+        border-radius: 0;
+    }
+}
+    

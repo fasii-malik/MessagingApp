@@ -1,12 +1,16 @@
 ﻿@page "/rolemanagement"
 @rendermode InteractiveServer
 @inject UserService UserService
+@using DevExpress.Blazor
+@inject IToastNotificationService ToastService
+@inject IDialogService DialogService
+@inject IJSRuntime JS
 
 <link href="css/RoleManagement.css" rel="stylesheet" />
 
 <EditForm Model="model" OnValidSubmit="AssignRole">
 
-    <div class="assign-role-card">
+    <div class="assign-role-card mt-2 mb-2">
 
         <!-- HEADER -->
         <div class="card-header">
@@ -17,7 +21,7 @@
 
         <!-- USERS TABLE -->
         <div class="card">
-            <h3>Select User</h3>
+            <h3 class="ms-2">Select User</h3>
 
             <table class="users-table">
                 <thead>
@@ -25,7 +29,7 @@
                         <th></th>
                         <th>User</th>
                         <th>Current Role</th>
-                        <th>Status</th>
+                        
                     </tr>
                 </thead>
 
@@ -49,7 +53,7 @@
                                     @onclick="() => model.UserId = user.Id.ToString()">
 
                                     <td>
-                                        <InputRadio Value="@user.Id" />
+                                        <InputRadio Value="@user.Id.ToString()" />
                                     </td>
 
                                     <td>
@@ -57,11 +61,22 @@
                                         <small>@user.Email</small>
                                     </td>
 
-                                    <td>@GetRoleName(user.Role)</td>
-
                                     <td>
-                                        <span class="badge active">Active</span>
+                                        @if (user.Role == 3)
+                                        {
+                                            <span class="badge rounded-pill bg-danger">Super Admin</span>
+                                        }
+                                        else if (user.Role == 2)
+                                        {
+                                            <span class="badge rounded-pill bg-warning text-dark">Admin</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge rounded-pill bg-light text-dark">User</span>
+                                        }
                                     </td>
+
+                             
                                 </tr>
                             }
 
@@ -76,30 +91,30 @@
         <div class="roles-section">
             <h3 class="mt-5 mb-5">Select New Role</h3>
             <div class="container-fluid d-flex justify-content-center align-items-center">
-            <InputRadioGroup @bind-Value="model.Role" Name="role">
+                <InputRadioGroup @bind-Value="model.Role" Name="role">
 
-                <label class="role-card @(model.Role == 3 ? "selected" : "") ms-2">
-                    <InputRadio Value="3" />
-                    <div class="icon">👑</div>
-                    <div class="name">Super Admin</div>
-                    <div class="desc">Full system access</div>
-                </label>
+                    <label class="role-card @(model.Role == 3 ? "selected" : "") ms-2">
+                        <InputRadio Value="3" />
+                        <div class="icon">👑</div>
+                        <div class="name">Super Admin</div>
+                        <div class="desc">Full system access</div>
+                    </label>
 
-                <label class="role-card @(model.Role == 2 ? "selected" : "") ms-2">
-                    <InputRadio Value="2" />
-                    <div class="icon">⚡</div>
-                    <div class="name">Admin</div>
-                    <div class="desc">Manage users & data</div>
-                </label>
+                    <label class="role-card @(model.Role == 2 ? "selected" : "") ms-2">
+                        <InputRadio Value="2" />
+                        <div class="icon">⚡</div>
+                        <div class="name">Admin</div>
+                        <div class="desc">Manage users & data</div>
+                    </label>
 
-                <label class="role-card @(model.Role == 1 ? "selected" : "") ms-2">
-                    <InputRadio Value="1" />
-                    <div class="icon">👤</div>
-                    <div class="name">User</div>
-                    <div class="desc">Standard access</div>
-                </label>
+                    <label class="role-card @(model.Role == 1 ? "selected" : "") ms-2">
+                        <InputRadio Value="1" />
+                        <div class="icon">👤</div>
+                        <div class="name">User</div>
+                        <div class="desc">Standard access</div>
+                    </label>
 
-            </InputRadioGroup>
+                </InputRadioGroup>
             </div>
         </div>
         @if (hasError)
@@ -112,6 +127,10 @@
                     disabled="@(model.UserId == "0" || model.Role == 0)">
                 Assign Role
             </button>
+
+            <a href="/dashboard" class="btn btn-primary mt-5 mb-3">                
+                Cancel
+            </a>
         </div>
 
     </div>
@@ -122,7 +141,7 @@
     private bool hasError;
     private RoleRequest model = new();
     private List<UserRequest>? users;
-    private bool isLoading;   
+    private bool isLoading;
 
 
     protected override async Task OnInitializedAsync()
@@ -134,10 +153,32 @@
 
     private async Task AssignRole()
     {
-        var result = await UserService.AssignRoleAsync(model);          
+        bool confirmed = await DialogService.ConfirmAsync(new MessageBoxOptions()
+            {
+                Title = "Confirm Action",
+                Text = "Are you sure you want to assign the role?",
+                RenderStyle = MessageBoxRenderStyle.Warning,
+                OkButtonText = "Yes",
+                CancelButtonText = "Cancel"
+            });
 
-        if(result)
-        {            
+        if (!confirmed) return;
+
+        var result = await UserService.AssignRoleAsync(model);
+
+        if (result)
+        {
+            await JS.InvokeVoidAsync("window.scrollTo", 0, 0);
+
+            ToastService.ShowToast(new ToastOptions
+                {
+                    Title = "Success!",
+                    Text = "Role Assigned Successfully!",
+                    RenderStyle = ToastRenderStyle.Success,
+                    DisplayTime = TimeSpan.FromSeconds(5),
+                    ThemeMode = ToastThemeMode.Pastel
+                });
+
             users = await UserService.GetUsersAsync();
             model = new RoleRequest();
         }

@@ -9,5 +9,7 @@
         public int Role { get; set; }
         public DateTime CreatedAt { get; set; }
         public List<int>? Permissions { get; set; } = new();
+
+        public bool IsOnline { get; set; }
     }
 }

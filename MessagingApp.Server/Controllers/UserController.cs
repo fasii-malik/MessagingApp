@@ -15,18 +15,22 @@ namespace MessagingApp.Server.Controllers
     {
         private readonly IPermissionService _permissionService;
         private readonly IUserService _userService;
+        private readonly IUserConnectionService _userConnectionService;
 
-        public UserController(IPermissionService permissionService, IUserService userService)
+        public UserController(IPermissionService permissionService, IUserService userService, IUserConnectionService userConnectionService)
         {
             _permissionService = permissionService;
             _userService = userService;
+            _userConnectionService = userConnectionService;
         }
-        
+
         [HttpGet("get-users")]
         public async Task<IActionResult> GetAllUsers()
         {            
             var users = await _userService.GetAllUsersAsync();
-            
+
+            var onlineIds = _userConnectionService.GetAllOnlineUserIds();
+
             var userDtos = users.Select(u => new UserDto
             {
                 Id = u.Id,
@@ -35,7 +39,8 @@ namespace MessagingApp.Server.Controllers
                 EmailConfirmed = u.EmailConfirmed,                
                 Role = u.Role,
                 CreatedAt = u.CreatedAt,                
-                Permissions = u.Permissions.Select(p => p.Permission).ToList()
+                Permissions = u.Permissions.Select(p => p.Permission).ToList(),
+                IsOnline = onlineIds.Contains(u.Id.ToString())
             }).ToList();
 
             return Ok(userDtos);
