@@ -51,8 +51,16 @@ builder.Services.AddScoped<IMessageRepository, MessageRepository>();
 builder.Services.AddScoped<IMessageService, MessageService>();
 builder.Services.AddSingleton<IUserConnectionService, UserConnectionService>();
 
+builder.Services.AddScoped<IPinnedChatRepository, PinnedChatRepository>();
+builder.Services.AddScoped<IPinChatService, PinChatService>();
+builder.Services.AddScoped<IPinnedGroupRepository, PinnedGroupRepository>();
+builder.Services.AddScoped<IPinGroupService, PinGroupService>();
+
 builder.Services.AddSingleton<IAuthorizationHandler, PermissionHandler>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
+
+builder.Services.AddScoped<IStarredMessageRepository, StarredMessageRepository>();
+builder.Services.AddScoped<IStarredMessageService, StarredMessageService>();
 
 builder.Services.AddSignalR();
 builder.Services.AddMemoryCache();

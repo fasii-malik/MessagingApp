@@ -13,13 +13,15 @@ namespace MessagingApp.Server.Application.Services
         private readonly IMemoryCache _cache;
         private readonly IUserRepository _userRepo;
         private readonly IUserConnectionService _userConnectionService;
+        private readonly IPinnedChatRepository _pinnedChatRepo;
 
-        public MessageService(IMessageRepository repo, IMemoryCache cache, IUserRepository userRepo, IUserConnectionService userConnectionService)
+        public MessageService(IMessageRepository repo, IMemoryCache cache, IUserRepository userRepo, IUserConnectionService userConnectionService, IPinnedChatRepository pinnedChatRepo)
         {
             _repo = repo;
             _cache = cache;
             _userRepo = userRepo;
             _userConnectionService = userConnectionService;
+            _pinnedChatRepo = pinnedChatRepo;
         }
 
         public async Task<Message> SendMessageAsync(string senderId, string receiverId, string content)
@@ -93,6 +95,9 @@ namespace MessagingApp.Server.Application.Services
         {
             var currentUserGuid = Guid.Parse(currentUserId);
 
+            // 1️⃣ Get pinned user ids
+            var pinnedUserIds = await _pinnedChatRepo.GetPinnedUserIdsAsync(currentUserGuid);
+
             // 1️⃣ Get last message per conversation directly from DB
             var lastMessages = await _repo.GetAllMessagesForUserAsync(currentUserId);
 
@@ -106,10 +111,12 @@ namespace MessagingApp.Server.Application.Services
                     {
                         OtherUserId = g.Key,
                         LastMessage = lastMsg.Content,
-                        LastMessageTime = lastMsg.CreatedAt
+                        LastMessageTime = lastMsg.CreatedAt,
+                        IsPinned = pinnedUserIds.Contains(g.Key)
                     };
                 })
-                .OrderByDescending(x => x.LastMessageTime)
+                .OrderByDescending(c => c.IsPinned)
+                .ThenByDescending(c => c.LastMessageTime)
                 .ToList();
 
             // 2️⃣ Map to DTO
@@ -125,6 +132,7 @@ namespace MessagingApp.Server.Application.Services
                     FullName = user.FullName,
                     LastMessage = convo.LastMessage,
                     LastMessageTime = convo.LastMessageTime,
+                    IsPinned = convo.IsPinned,
                     IsOnline = _userConnectionService.IsOnline(user.Id.ToString())
                 });
             }

@@ -13,13 +13,15 @@ namespace MessagingApp.Server.Application.Services
         private readonly IGroupMessageRepository _groupMessageRepo;
         private readonly IUserRepository _userRepository;
         private readonly IUserConnectionService _connectionService;
+        private readonly IPinnedGroupRepository _pinnedGroupRepository;
 
-        public GroupService(IGroupRepository groupRepo, IGroupMessageRepository groupMessageRepo, IUserRepository userRepository, IUserConnectionService connectionService)
+        public GroupService(IGroupRepository groupRepo, IGroupMessageRepository groupMessageRepo, IUserRepository userRepository, IUserConnectionService connectionService, IPinnedGroupRepository pinnedGroupRepository)
         {
             _groupRepo = groupRepo;
             _groupMessageRepo = groupMessageRepo;
             _userRepository = userRepository;
             _connectionService = connectionService;
+            _pinnedGroupRepository = pinnedGroupRepository;
         }
 
         public async Task<ChatGroupDto> CreateGroupAsync(
@@ -56,6 +58,10 @@ namespace MessagingApp.Server.Application.Services
             var lastMessages = await _groupMessageRepo
                 .GetLastMessagesAsync(groupIds);
 
+            // 🔹 Get pinned groups for user
+            var pinnedGroupIds = await _pinnedGroupRepository.GetPinnedGroupIdsAsync(userId);
+            var pinnedSet = pinnedGroupIds.ToHashSet();
+
             return groups
           .Select(g =>
           {
@@ -73,10 +79,12 @@ namespace MessagingApp.Server.Application.Services
                   }).ToList(),
                   LastMessage = lastMsg?.Content,
                   LastMessageTime = lastMsg?.SentAt,
-                  LastMessageSenderId = lastMsg?.SenderId
+                  LastMessageSenderId = lastMsg?.SenderId,
+                  IsPinned = pinnedSet.Contains(g.Id) 
               };
           })
-          .OrderByDescending(g => g.LastMessageTime ?? DateTime.MinValue) // sort here
+          .OrderByDescending(g => g.IsPinned) // pinned first
+          .ThenByDescending(g => g.LastMessageTime ?? DateTime.MinValue) // sort here
           .ToList();
 
         }

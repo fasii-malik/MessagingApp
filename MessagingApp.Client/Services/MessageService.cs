@@ -175,5 +175,42 @@ namespace MessagingApp.Client.Services
             }
         }
 
+        public async Task<bool> PinConversationAsync(Guid otherUserId)
+        {
+            var token = await _cookieService.GetToken();
+            if (string.IsNullOrWhiteSpace(token))
+                return false;
+
+            var request = new HttpRequestMessage(
+                HttpMethod.Post,
+                $"/api/Chat/pin/{otherUserId}"
+            );
+
+            request.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await _http.SendAsync(request);
+            return response.IsSuccessStatusCode;
+        }
+
+        public async Task<bool> UnpinConversationAsync(Guid otherUserId)
+        {
+            var token = await _cookieService.GetToken();
+            if (string.IsNullOrWhiteSpace(token))
+                return false;
+
+            var request = new HttpRequestMessage(
+                HttpMethod.Delete,
+                $"/api/Chat/pin/{otherUserId}"
+            );
+
+            request.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await _http.SendAsync(request);
+            return response.IsSuccessStatusCode;
+        }
+
+
     }//class
 }//namespace

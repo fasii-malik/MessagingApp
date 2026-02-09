@@ -16,11 +16,13 @@ namespace MessagingApp.Server.Controllers
         private readonly IGroupService _groupService;
         private readonly IGroupMessageService _groupMessageService;
         private readonly IUserService _userService;
+        private readonly IPinGroupService _pinGroupService;
 
-        public GroupChatController(IGroupService groupService, IGroupMessageService groupMessageService)
+        public GroupChatController(IGroupService groupService, IGroupMessageService groupMessageService, IPinGroupService pinGroupService)
         {
             _groupService = groupService;
             _groupMessageService = groupMessageService;
+            _pinGroupService = pinGroupService;
         }
 
         [Authorize]
@@ -111,6 +113,22 @@ namespace MessagingApp.Server.Controllers
             if (!success)
                 return BadRequest("Unable to add member");
 
+            return Ok();
+        }
+
+        [HttpPost("{groupId}/pin")]
+        public async Task<IActionResult> PinGroup(Guid groupId)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier); // from JWT
+            await _pinGroupService.PinAsync(Guid.Parse(userId), groupId);
+            return Ok();
+        }
+
+        [HttpDelete("{groupId}/pin")]
+        public async Task<IActionResult> UnpinGroup(Guid groupId)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier); // from JWT
+            await _pinGroupService.UnpinAsync(Guid.Parse(userId), groupId);
             return Ok();
         }
 

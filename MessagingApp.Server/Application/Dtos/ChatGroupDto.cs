@@ -12,5 +12,7 @@
         public string? LastMessage { get; set; }
         public DateTime? LastMessageTime { get; set; }
         public Guid? LastMessageSenderId { get; set; }
+
+        public bool IsPinned { get; set; }
     }
 }

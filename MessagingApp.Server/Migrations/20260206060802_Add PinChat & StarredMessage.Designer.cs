@@ -4,6 +4,7 @@ using MessagingApp.Server.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MessagingApp.Server.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260206060802_Add PinChat & StarredMessage")]
+    partial class AddPinChatStarredMessage
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -146,26 +149,6 @@ namespace MessagingApp.Server.Migrations
                     b.ToTable("PinnedChats");
                 });
 
-            modelBuilder.Entity("MessagingApp.Server.Domain.Entities.PinnedGroup", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<Guid>("GroupId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.Property<DateTime>("PinnedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<Guid>("UserId")
-                        .HasColumnType("uniqueidentifier");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("PinnedGroups");
-                });
-
             modelBuilder.Entity("MessagingApp.Server.Domain.Entities.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")
@@ -256,7 +239,7 @@ namespace MessagingApp.Server.Migrations
                             Email = "superadmin@messagingapp.com",
                             EmailConfirmed = true,
                             FullName = "Super Admin",
-                            PasswordHash = "$2a$11$pzauhluTcHrCirvovtgpBOh8n2hO1nhsbZxd4gMgg/Fb.CihTfScm",
+                            PasswordHash = "$2a$11$bnGW2C7OwZzwzLKz.QoSaunM/jzBbVLDNV.E9Xc/8raCvrsLnTXMu",
                             Role = 3
                         });
                 });

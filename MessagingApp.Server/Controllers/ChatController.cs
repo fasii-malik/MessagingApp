@@ -1,5 +1,6 @@
 ﻿using MessagingApp.Server.Application.Dtos;
 using MessagingApp.Server.Application.Interfaces;
+using MessagingApp.Server.Application.Services;
 using MessagingApp.Server.Domain.Entities;
 using MessagingApp.Server.Infrastructure;
 using Microsoft.AspNetCore.Authorization;
@@ -16,11 +17,13 @@ namespace MessagingApp.Server.Controllers
     {
         private readonly IMessageService _messageService;
         private readonly IUserConnectionService _connections;
+        private readonly IPinChatService _pinChatService;
 
-        public ChatController(IMessageService messageService, IUserConnectionService connections)
+        public ChatController(IMessageService messageService, IUserConnectionService connections, IPinChatService pinChatService)
         {
             _messageService = messageService;
             _connections = connections;
+            _pinChatService = pinChatService;
         }
 
         [Authorize]
@@ -113,6 +116,25 @@ namespace MessagingApp.Server.Controllers
             return Ok(new { Message = "Conversation deleted successfully" });
         }
 
+        [HttpPost("pin/{userId}")]
+        public async Task<IActionResult> PinChat(Guid userId)
+        {
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                    ?? User.FindFirst("sub")?.Value; // Current user Id from JWt
+
+            await _pinChatService.PinAsync(Guid.Parse(currentUserId), userId);
+            return Ok();
+        }
+
+        [HttpDelete("pin/{userId}")]
+        public async Task<IActionResult> UnpinChat(Guid userId)
+        {
+            var currentUserId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+              ?? User.FindFirst("sub")?.Value; // Current user Id from JWt
+
+            await _pinChatService.UnpinAsync(Guid.Parse(currentUserId), userId);
+            return Ok();
+        }
 
     }
 

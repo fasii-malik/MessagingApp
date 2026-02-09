@@ -3,6 +3,7 @@
 @inject GroupMessageService GroupMessageService
 @inject UserService UserService
 @inject GroupService GroupService
+@inject StarredMessageService StarredMessageService
 @inject HttpClient Http
 @inject JWTAuthenticationStateProvider AuthProvider
 @inject ChatHubClient Hub
@@ -16,7 +17,7 @@
 
 <link href="css/MessengerLayout.css" rel="stylesheet" />
 
-<div class="custom-container @(selectedUser != null || selectedGroup != null ? "chat-open" : "")">
+<div class="custom-container @(selectedUser != null || selectedGroup != null || showStarredMessages ? "chat-open" : "")">
 
 
     <div class="sidebar">
@@ -50,6 +51,12 @@
                             <a href="/create-group" class="dropdown-item">
                                 <i class="bi bi-person-fill-add"></i> Create Group
                             </a>
+                        </li>
+                         <li>
+                            <button class="dropdown-item text-warning" @onclick="ShowStarredMessages">
+                                <i class="bi bi-star-fill"></i> Starred Messages
+                            </button>
+
                         </li>
                         <li>
                             <button class="dropdown-item text-danger" @onclick="Logout">
@@ -143,6 +150,13 @@
                                         <div class="conversation-header">
                                             <span class="conversation-name">@convo.FullName</span>
                                             <span class="conversation-time"> @FormatMessageTime(@convo.LastMessageTime)</span>
+                                            <!-- PIN BUTTON -->
+                                            <button class="btn btn-sm btn-light border-0 p-0"
+                                                    title="Pin"
+                                                    @onclick="() => TogglePin(convo)"
+                                            @onclick:stopPropagation>
+                                                @(convo.IsPinned ? "📌" : "📍")
+                                            </button>
                                         </div>
                                         <div class="conversation-preview">
                                             @convo.LastMessage
@@ -265,6 +279,13 @@
                                                         @FormatMessageTime(@group.LastMessageTime.Value)
                                                     </span>
                                                 }
+
+                                                <button class="btn btn-sm btn-light border-0 p-0"
+                                                        @onclick="() => ToggleGroupPin(group)"
+                                                @onclick:stopPropagation>
+                                                    @(group.IsPinned ? "📌" : "📍")
+                                                </button>
+
                                             </div>
 
                                             <div class="conversation-preview">
@@ -387,6 +408,21 @@
                     <span class="text-muted small mt-1">
                         @selectedMessageIds.Count selected
                     </span>
+
+                    
+
+                        @if (selectedMessageIds.Any())
+                        {
+                        <button class="btn btn-sm btn-outline-warning bg-transparent" @onclick="() => ToggleStar(selectedMessageIds)">
+                                @{
+                                    // Check if the first selected message is already starred to decide the icon
+                                    var firstId = selectedMessageIds.First();
+                                    var isFirstStarred = messages.FirstOrDefault(m => m.Id == firstId)?.IsStarred ?? false;
+                                }
+                                <i class="bi @(isFirstStarred ? "bi-star-fill text-warning" : "bi-star")"></i>                                
+                            </button>
+                        }
+                    
 
                     <button class="btn btn-outline-danger btn-sm mt-1 mb-1"
                             disabled="@(!selectedMessageIds.Any())"
@@ -525,8 +561,9 @@
             <!-- CHAT AREA -->
             <!-- MAIN CONTENT -->
             <div class="flex-grow-1 d-flex align-items-center justify-content-center bg-light">
+                
 
-                @if (selectedUser == null && selectedGroup == null)
+                @if (selectedUser == null && selectedGroup == null && showStarredMessages == false)
                 {
                     <!-- EMPTY STATE -->
                     <div class="d-flex flex-column align-items-center justify-content-center h-100 text-center py-5">
@@ -552,7 +589,8 @@
                     <div class="bg-white border rounded p-3 d-flex flex-column chat-container">
 
                         <button class="btn btn-sm btn-light d-md-none"
-                                @onclick="() => { selectedUser = null; selectedGroup = null; }">
+                                @onclick="() => { selectedUser = null; selectedGroup = null;
+                                    showStarredMessages = false;}">
                             ← Back
                         </button>
                         @* ================= USER CHAT ================= *@
@@ -636,6 +674,46 @@
                             </div>
 
                         }
+                        else if (showStarredMessages)
+                        {
+                            
+                                <div class="starred-messages-panel border rounded p-3 mb-2 bg-light">
+                                    <div class="d-flex justify-content-between mb-2">
+                                        <strong>⭐ Starred Messages</strong>
+                                        <button class="btn btn-sm btn-light" @onclick="CloseStarredMessages">✖</button>
+                                    </div>
+
+                                    @if (starredMessages.Any())
+                                    {
+                                        @foreach (var msg in starredMessages)
+                                        {
+                                        <div class="starred-message d-flex align-items-start gap-2 mb-1 p-2 border rounded">
+
+                                            <div class="flex-grow-1">
+                                                <span class="small text-muted d-block">
+                                                    @FormatMessageTime(msg.StarredAtUtc)
+                                                </span>
+                                                <span>@msg.Content</span>
+                                            </div>
+
+                                            <button class="btn btn-sm btn-outline-warning"
+                                                    title="Unstar"
+                                                    type="button"
+                                                    @onclick="() => ToggleStar(new[] { msg.MessageId })">
+                                                <i class="bi bi-star-fill"></i>
+                                            </button>
+
+                                        </div>
+
+                                        }
+                                    }
+                                    else
+                                    {
+                                        <p class="text-muted small">No starred messages</p>
+                                    }
+                                </div>
+                            
+                        }
 
                         @if (selectedBot != null)
                         {
@@ -646,6 +724,8 @@
                         }
 
                         <!-- INPUT -->
+                        @if (!showStarredMessages)
+                        {
                         <div class="d-flex gap-2 chat-input-area">
                             <input class="form-control chat-input"
                                    placeholder="Type a message..."
@@ -682,7 +762,7 @@
                                 </div>
                             }
                         </div>
-
+                        }
                     </div>
                     @* -------------------------------------- Ai Bot List Pending Ends ------------------------------------- *@
                 }
@@ -736,6 +816,8 @@
     GroupInfoDto? groupInfo;
     bool showAddMemberModal = false;
     Guid selectedUserId;
+    private bool showStarredMessages = false;
+    private List<StarredMessageDto> starredMessages = new();
     // @* -------------------------------------- Ai Bot List Pending ------------------------------------- *@
     public class AiBot
     {
@@ -875,6 +957,7 @@
         selectedConversation = null;
         selectedGroup = null;
         CurrentGroupId = null;
+        showStarredMessages = false;
 
         try
         {
@@ -898,6 +981,8 @@
         selectedMessageIds.Clear();
         isSelectionMode = false;
         selectedConversation = convo;
+
+        showStarredMessages = false;
 
         // 🔥 Sync selectedUser from conversation
         selectedUser = users.FirstOrDefault(u => u.Id == convo.UserId)
@@ -1330,6 +1415,7 @@
         CurrentGroupId = group.Id;
         selectedUser = null;
         selectedConversation = null;
+        showStarredMessages = false;
 
         // Join the new group
         await Hub.JoinGroupAsync(group.Id);
@@ -1339,6 +1425,120 @@
 
         StateHasChanged();
     }
+
+    private async Task TogglePin(ConversationDto convo)
+    {
+        bool success;
+
+        if (convo.IsPinned)
+            success = await MessageService.UnpinConversationAsync(convo.UserId);
+        else
+            success = await MessageService.PinConversationAsync(convo.UserId);
+
+        if (!success)
+            return;
+
+        convo.IsPinned = !convo.IsPinned;
+
+        // Optional: re-sort locally for instant UX
+        conversations = conversations
+            .OrderByDescending(c => c.IsPinned)
+            .ThenByDescending(c => c.LastMessageTime)
+            .ToList();
+    }
+
+    async Task ToggleGroupPin(GroupDto group)
+    {
+        if (group.IsPinned)
+            await GroupService.UnpinGroupAsync(group.Id);
+        else
+            await GroupService.PinGroupAsync(group.Id);
+
+        group.IsPinned = !group.IsPinned;
+
+        groups = groups
+            .OrderByDescending(g => g.IsPinned)
+            .ThenByDescending(g => g.LastMessageTime ?? DateTime.MinValue)
+            .ToList();
+    }
+
+     private async Task ShowStarredMessages()
+    {
+        selectedGroup = null;
+        selectedUser = null;
+        
+        // Load starred messages from your service
+        starredMessages = await StarredMessageService.GetStarredMessagesAsync();
+        foreach (var msg in messages)
+        {
+            msg.IsStarred = starredMessages.Any(s => s.MessageId == msg.Id);
+        }
+
+        showStarredMessages = true;
+
+        StateHasChanged();
+    }
+
+    private void CloseStarredMessages()
+    {
+        showStarredMessages = false;
+        selectedUser = null;
+        selectedGroup = null;
+    }
+
+    private async Task ToggleStar(IEnumerable<Guid> messageIds)
+    {
+        try
+        {
+            // ToList() prevents "Collection Modified" errors if messageIds
+            // is bound directly to your selection list
+            var idsToUpdate = messageIds.ToList();
+
+            foreach (var id in idsToUpdate)
+            {
+                await StarredMessageService.ToggleStarAsync(id);
+
+                // Update UI locally
+                var msg = messages.FirstOrDefault(m => m.Id == id);
+                if (msg != null)
+                    msg.IsStarred = !msg.IsStarred;
+            }
+
+            ToastService.ShowToast(new ToastOptions
+                {
+                    Title = "Success",
+                    Text = "Update complete.",
+                    RenderStyle = ToastRenderStyle.Success,
+                    DisplayTime = TimeSpan.FromSeconds(3),
+                    ThemeMode = ToastThemeMode.Pastel
+                });
+        }
+        catch (Exception)
+        {
+            ToastService.ShowToast(new ToastOptions
+                {
+                    Title = "Error",
+                    Text = "Something went wrong.",
+                    RenderStyle = ToastRenderStyle.Danger,
+                    DisplayTime = TimeSpan.FromSeconds(5),
+                    ThemeMode = ToastThemeMode.Pastel
+                });
+        }
+        finally
+        {
+            selectedMessageIds.Clear();
+            isSelectionMode = false;
+
+            if (showStarredMessages)
+                starredMessages = await StarredMessageService.GetStarredMessagesAsync();
+
+            StateHasChanged();
+        }
+    }
+
+
+
+
 
     public static string FormatMessageTime(DateTime sentAt)
     {

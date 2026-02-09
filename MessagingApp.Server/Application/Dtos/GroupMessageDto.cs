@@ -9,6 +9,6 @@ namespace MessagingApp.Server.Application.Dtos
         public Guid SenderId { get; set; }
         public string SenderName { get; set; } = ""; // optional if you want name
         public string Content { get; set; } = "";
-        public DateTime SentAt { get; set; }
+        public DateTime SentAt { get; set; }        
     }
 }

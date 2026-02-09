@@ -19,6 +19,7 @@ builder.Services.AddScoped<ChatHubClient>();
 builder.Services.AddScoped<MessageService>();
 builder.Services.AddScoped<GroupMessageService>();
 builder.Services.AddScoped<GroupService>();
+builder.Services.AddScoped<StarredMessageService>();
 
 
 // HttpClient (cookies enabled)

@@ -17,6 +17,9 @@ namespace MessagingApp.Server.Infrastructure
         public DbSet<GroupMessage> GroupMessages { get; set; }
         public DbSet<ChatGroup> ChatGroups { get; set; }
         public DbSet<GroupMember> GroupMembers { get; set; }
+        public DbSet<PinnedChat> PinnedChats { get; set; }
+        public DbSet<PinnedGroup> PinnedGroups { get; set; }
+        public DbSet<StarredMessage> StarredMessages { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)

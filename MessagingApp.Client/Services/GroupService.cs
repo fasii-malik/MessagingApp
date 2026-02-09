@@ -116,5 +116,31 @@ namespace MessagingApp.Client.Services
             return response.IsSuccessStatusCode;
         }
 
+        public async Task<bool> PinGroupAsync(Guid groupId)
+        {
+            var token = await _cookieService.GetToken();
+            if (string.IsNullOrEmpty(token))
+                return false;
+
+            var request = new HttpRequestMessage(HttpMethod.Post, $"/api/GroupChat/{groupId}/pin");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await _http.SendAsync(request);
+            return response.IsSuccessStatusCode;
+        }
+
+        public async Task<bool> UnpinGroupAsync(Guid groupId)
+        {
+            var token = await _cookieService.GetToken();
+            if (string.IsNullOrEmpty(token))
+                return false;
+
+            var request = new HttpRequestMessage(HttpMethod.Delete, $"/api/GroupChat/{groupId}/pin");
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await _http.SendAsync(request);
+            return response.IsSuccessStatusCode;
+        }
+
     }
 }
