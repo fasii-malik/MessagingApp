@@ -20,11 +20,22 @@ namespace MessagingApp.Server.Infrastructure
         public DbSet<PinnedChat> PinnedChats { get; set; }
         public DbSet<PinnedGroup> PinnedGroups { get; set; }
         public DbSet<StarredMessage> StarredMessages { get; set; }
+        public DbSet<GroupMessageStarred> GroupMessageStarreds { get; set; }
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+
+            // Configure composite key for GroupMessageStarred
+            modelBuilder.Entity<GroupMessageStarred>()
+    .HasKey(x => new { x.UserId, x.GroupMessageId });
+
+            modelBuilder.Entity<GroupMessageStarred>()
+                .HasOne(x => x.GroupMessage)
+                .WithMany()
+                .HasForeignKey(x => x.GroupMessageId)
+                .OnDelete(DeleteBehavior.Cascade);
 
             // Configure composite key for UserPermission
             modelBuilder.Entity<UserPermission>()
@@ -56,7 +67,7 @@ namespace MessagingApp.Server.Infrastructure
         }
         private void SeedData(ModelBuilder modelBuilder)
         {
-            // Seed SuperAdmin user
+            // ================= SUPER ADMIN =================
             var superAdminId = Guid.Parse("11111111-1111-1111-1111-111111111111");
 
             modelBuilder.Entity<User>().HasData(new User
@@ -70,7 +81,22 @@ namespace MessagingApp.Server.Infrastructure
                 CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc)
             });
 
-            // Optional: Seed permissions for SuperAdmin
+            // ================= AI AGENT BOT =================
+            var agentBotId = Guid.Parse("22222222-2222-2222-2222-222222222222");
+
+            modelBuilder.Entity<User>().HasData(new User
+            {
+                Id = agentBotId,
+                FullName = "Agent 🤖",
+                Email = "agent@messagingapp.local",
+                EmailConfirmed = true,
+                PasswordHash = "BOT_NO_LOGIN", // important
+                Role = UserRole.User,
+                CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, DateTimeKind.Utc),
+                IsBot = true
+            });
+
+            // ================= SUPER ADMIN PERMISSIONS =================
             modelBuilder.Entity<UserPermission>().HasData(
                 new UserPermission
                 {

@@ -17,7 +17,12 @@ public class ChatHubClient
     public event Action<MessageDto>? MessageReceived;
     public event Action<GroupMessageDto>? GroupMessageReceived;
     public event Action<List<string>>? SetOnlineUsers;
-    
+    public event Action<string>? UserTyping;
+    public event Action<string>? UserStoppedTyping;
+
+    public event Action<MessageDto>? AgentMessageReceived;
+
+
 
 
     public async Task ConnectAsync(string token, NavigationManager nav)
@@ -52,6 +57,22 @@ public class ChatHubClient
             return Task.CompletedTask;
         };
 
+        _connection.On<MessageDto>("ReceiveMessageFromAgent", msg =>
+        {
+            AgentMessageReceived?.Invoke(msg);
+        });
+
+        _connection.On<string>("UserTyping", userId =>
+        {
+            UserTyping?.Invoke(userId);
+        });
+
+        _connection.On<string>("UserStoppedTyping", userId =>
+        {
+            UserStoppedTyping?.Invoke(userId);
+        });
+
+
         _connection.On<string>("UserOnline", id => UserOnline?.Invoke(id));
         _connection.On<string>("UserOffline", id => UserOffline?.Invoke(id));
         _connection.On<MessageDto>("ReceiveMessage", msg => MessageReceived?.Invoke(msg));
@@ -84,6 +105,15 @@ public class ChatHubClient
             await _connection.SendAsync("SendGroupMessage", groupId, senderId, message);
     }
 
+    public async Task SendMessageFromAgent(string agentId, string userId, string message)
+    {
+        if (_connection != null)
+        {
+            // Call the hub method for sending messages from agent
+            await _connection.SendAsync("SendMessageFromAgent", agentId, userId, message);
+        }
+    }
+
     public async Task JoinGroupAsync(Guid groupId)
     {
         if (_connection != null)
@@ -96,6 +126,17 @@ public class ChatHubClient
             await _connection.SendAsync("LeaveGroup", groupId);
     }
 
+    public async Task TypingAsync(string receiverId)
+    {
+        if (_connection != null)
+            await _connection.SendAsync("Typing", receiverId);
+    }
+
+    public async Task StopTypingAsync(string receiverId)
+    {
+        if (_connection != null)
+            await _connection.SendAsync("StopTyping", receiverId);
+    }
 
     public async Task DisconnectAsync()
     {

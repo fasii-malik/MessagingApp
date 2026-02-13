@@ -7,6 +7,8 @@
         public Guid SenderId { get; set; }
         public string Content { get; set; } = "";
         public DateTime SentAt { get; set; }
+
+        public bool IsStarred { get; set; } = false; // <-- Add this
     }
 
 }

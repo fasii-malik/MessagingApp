@@ -13,5 +13,6 @@ namespace MessagingApp.Server.Application.Interfaces
             Task UpdateAsync(User user);
             Task DeleteAsync(Guid id);
             Task<IEnumerable<User>?> GetAllUsersAsync();
-    }   
+            Task<IEnumerable<User>> GetBotsAsync();
+    }
 }

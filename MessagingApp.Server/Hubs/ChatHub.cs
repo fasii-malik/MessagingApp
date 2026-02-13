@@ -66,26 +66,62 @@ namespace MessagingApp.Server.Hubs
             var message = await _messageService.SendMessageAsync(senderId, receiverId, content);
 
             // Send to receiver  
-                var connectionIds = _connections.GetConnectionIds(receiverId);
-                foreach (var connId in connectionIds)
-                {
-                    await Clients.Client(connId).SendAsync("ReceiveMessage", message);
-                }    
+            var connectionIds = _connections.GetConnectionIds(receiverId);
+            foreach (var connId in connectionIds)
+            {
+                await Clients.Client(connId).SendAsync("ReceiveMessage", message);
+            }
 
             // Send back to sender
             await Clients.Caller.SendAsync("ReceiveMessage", message);
         }
 
         public async Task SendGroupMessage(Guid groupId, Guid senderId, string message)
-        {            
+        {
 
             var msg = await _groupMessageService.SendGroupMessageAsync(groupId, senderId, message);
 
             await Clients.Group(groupId.ToString())
-    .SendAsync("ReceiveGroupMessage", msg);
+            .SendAsync("ReceiveGroupMessage", msg);
 
         }
 
+        public async Task SendMessageFromAgent(string senderId, string receiverId, string content)
+        {
+            var message = await _messageService.SendMessageAsync(senderId, receiverId, content);
+
+            // send only to the receiver
+            var connectionIds = _connections.GetConnectionIds(receiverId);
+            foreach (var connId in connectionIds)
+                await Clients.Client(connId).SendAsync("ReceiveMessage", message);
+
+            // optionally, send back to sender (agent) if needed
+            await Clients.Caller.SendAsync("ReceiveMessage", message);
+        }
+
+        public async Task Typing(string receiverId)
+        {
+            var senderId = Context.UserIdentifier!;
+
+            var connectionIds = _connections.GetConnectionIds(receiverId);
+            foreach (var connId in connectionIds)
+            {
+                await Clients.Client(connId)
+                    .SendAsync("UserTyping", senderId);
+            }
+        }
+
+        public async Task StopTyping(string receiverId)
+        {
+            var senderId = Context.UserIdentifier!;
+
+            var connectionIds = _connections.GetConnectionIds(receiverId);
+            foreach (var connId in connectionIds)
+            {
+                await Clients.Client(connId)
+                    .SendAsync("UserStoppedTyping", senderId);
+            }
+        }
 
     }
 }

@@ -106,5 +106,19 @@ namespace MessagingApp.Server.Controllers
             return Ok(dto);
         }
 
+        [HttpGet("agents")]
+        public async Task<IActionResult> GetAgents()
+        {
+            var bots = await _userService.GetBotsAsync();
+
+            var dtos = bots.Select(b => new
+            {
+                b.Id,
+                Name = b.FullName,
+                b.Email
+            });
+
+            return Ok(dtos);
+        }
     }
 }

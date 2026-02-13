@@ -30,6 +30,9 @@ namespace MessagingApp.Server.Application.Services
         {
             var user = await _userRepository.GetByEmailAsync(request.Email.Trim().ToLower());
 
+            if (user.IsBot)
+                throw new Exception("Bots cannot login.");
+
             if (user is null || !_passwordHasher.Verify(request.Password, user.PasswordHash))
                 throw new UnauthorizedAccessException("Invalid credentials");
 

@@ -23,7 +23,8 @@ namespace MessagingApp.Server.Domain.Entities
         [MaxLength(50)]
         public UserRole Role { get; set; } = UserRole.User;
         [Required]
-        public DateTime CreatedAt { get; set; }        
+        public DateTime CreatedAt { get; set; }       
+        public bool IsBot { get; set; } = false;
         public ICollection<UserPermission> Permissions { get; set; }
             = new List<UserPermission>();
         public ICollection<RefreshToken> RefreshTokens { get; set; }

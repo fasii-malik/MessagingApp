@@ -32,28 +32,55 @@ namespace MessagingApp.Client.Services
             return response.IsSuccessStatusCode;
         }
 
-        // Get all starred messages for the current user
-        public async Task<List<StarredMessageDto>> GetStarredMessagesAsync()
+        // Toggle star/unstar a group message
+        public async Task<bool> ToggleGroupStarAsync(Guid groupMessageId)
         {
             var token = await _cookieService.GetToken();
-            if (string.IsNullOrWhiteSpace(token)) return new List<StarredMessageDto>();
+            if (string.IsNullOrWhiteSpace(token)) return false;
+
+            var request = new HttpRequestMessage(
+                HttpMethod.Post,
+                $"/api/StarredMessages/group/{groupMessageId}"
+            );
+
+            request.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", token);
+
+            var response = await _http.SendAsync(request);
+            return response.IsSuccessStatusCode;
+        }
+
+        // Get all starred messages (private + group)
+        public async Task<List<StarredMessageDto>> GetAllStarredMessagesAsync()
+        {
+            var token = await _cookieService.GetToken();
+            if (string.IsNullOrWhiteSpace(token))
+                return new List<StarredMessageDto>();
 
             var request = new HttpRequestMessage(
                 HttpMethod.Get,
-                "/api/StarredMessages"
+                "/api/StarredMessages/all"
             );
-            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+
+            request.Headers.Authorization =
+                new AuthenticationHeaderValue("Bearer", token);
 
             var response = await _http.SendAsync(request);
 
             if (!response.IsSuccessStatusCode)
             {
-                _logger.LogWarning("Failed to fetch starred messages: {StatusCode}", response.StatusCode);
+                _logger.LogWarning(
+                    "Failed to fetch all starred messages: {StatusCode}",
+                    response.StatusCode
+                );
                 return new List<StarredMessageDto>();
             }
 
-            var messages = await response.Content.ReadFromJsonAsync<List<StarredMessageDto>>();
+            var messages =
+                await response.Content.ReadFromJsonAsync<List<StarredMessageDto>>();
+
             return messages ?? new List<StarredMessageDto>();
         }
+
     }
 }

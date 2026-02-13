@@ -16,6 +16,7 @@ namespace MessagingApp.Server.Application.Repositories
             _dbContext = context;
         }
 
+        // ---------- Private Messages ----------
         public async Task AddAsync(StarredMessage starredMessage)
         {
             _dbContext.StarredMessages.Add(starredMessage);
@@ -45,13 +46,59 @@ namespace MessagingApp.Server.Application.Repositories
             return await _dbContext.StarredMessages
                 .Where(x => x.UserId == userId)
                 .Include(x => x.Message)
+                .ThenInclude(m => m.Sender)
                 .OrderByDescending(x => x.StarredAt)
                 .Select(x => new StarredMessageDto
                 {
                     MessageId = x.MessageId,
                     Content = x.Message.Content,
                     SenderId = x.Message.SenderId,
-                    StarredAtUtc = x.StarredAt
+                    StarredAtUtc = x.StarredAt,
+                    Fullname = x.Message.Sender.FullName,
+                    Type = "Private Message"
+                })
+                .ToListAsync();
+        }
+        // ---------- Group Messages ----------
+        public async Task AddGroupMessageStarredAsync(GroupMessageStarred starredMessage)
+        {
+            _dbContext.GroupMessageStarreds.Add(starredMessage);
+            await _dbContext.SaveChangesAsync();
+        }
+
+        public async Task RemoveGroupMessageStarredAsync(Guid userId, Guid groupMessageId)
+        {
+            var starred = await _dbContext.GroupMessageStarreds
+                .FirstOrDefaultAsync(x => x.UserId == userId && x.GroupMessageId == groupMessageId);
+
+            if (starred != null)
+            {
+                _dbContext.GroupMessageStarreds.Remove(starred);
+                await _dbContext.SaveChangesAsync();
+            }
+        }
+
+        public Task<bool> GroupMessageExistsAsync(Guid userId, Guid groupMessageId)
+        {
+            return _dbContext.GroupMessageStarreds
+                .AnyAsync(x => x.UserId == userId && x.GroupMessageId == groupMessageId);
+        }
+
+        public async Task<List<StarredMessageDto>> GetStarredGroupMessagesAsync(Guid userId)
+        {
+            return await _dbContext.GroupMessageStarreds
+                .Where(x => x.UserId == userId)
+                .Include(x => x.GroupMessage)
+                .ThenInclude(m => m.Sender)
+                .OrderByDescending(x => x.StarredAt)
+                .Select(x => new StarredMessageDto
+                {
+                    MessageId = x.GroupMessageId,
+                    Content = x.GroupMessage.Content,
+                    SenderId = x.GroupMessage.SenderId,
+                    StarredAtUtc = x.StarredAt,
+                    Fullname = x.GroupMessage.Sender.FullName,
+                    Type = "Group Message"
                 })
                 .ToListAsync();
         }

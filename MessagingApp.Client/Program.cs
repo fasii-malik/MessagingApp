@@ -20,6 +20,7 @@ builder.Services.AddScoped<MessageService>();
 builder.Services.AddScoped<GroupMessageService>();
 builder.Services.AddScoped<GroupService>();
 builder.Services.AddScoped<StarredMessageService>();
+builder.Services.AddScoped<AgentService>();
 
 
 // HttpClient (cookies enabled)

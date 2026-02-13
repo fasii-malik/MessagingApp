@@ -38,14 +38,16 @@ namespace MessagingApp.Server.Application.Services
             // Save to DB
             await _repo.AddAsync(message);
 
-            // Update cache
-            var key = GetCacheKey(senderId, receiverId);
-            if (!_cache.TryGetValue(key, out List<Message> messages))
-            {
-                messages = new List<Message>();
-            }
-            messages.Add(message);
-            _cache.Set(key, messages, TimeSpan.FromMinutes(5));
+            _cache.Remove(GetCacheKey(senderId, receiverId));
+
+            //// Update cache
+            //var key = GetCacheKey(senderId, receiverId);
+            //if (!_cache.TryGetValue(key, out List<Message> messages))
+            //{
+            //    messages = new List<Message>();
+            //}
+            //messages.Add(message);
+            //_cache.Set(key, messages, TimeSpan.FromMinutes(5));
 
             return message;
         }
@@ -146,10 +148,20 @@ namespace MessagingApp.Server.Application.Services
             if (messageIds == null || !messageIds.Any())
                 return;
             
+            // 🔥 Load messages FIRST
+            var messages = await _repo.GetAllMessagesForUserAsync(currentUserId.ToString());
+
             await _repo.DeleteManyAsync(messageIds);
 
-            // 🧹 Optional: clear related cache
-            _cache.Remove($"messages_{currentUserId}");
+            // 🔥 Invalidate BOTH cache directions
+            foreach (var msg in messages)
+            {
+                var key1 = GetCacheKey(msg.SenderId.ToString(), msg.ReceiverId.ToString());
+                var key2 = GetCacheKey(msg.ReceiverId.ToString(), msg.SenderId.ToString());
+
+                _cache.Remove(key1);
+                _cache.Remove(key2);
+            }
         }
 
         public async Task DeleteConversationAsync(Guid currentUserId, Guid otherUserId)

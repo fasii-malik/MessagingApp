@@ -4,6 +4,7 @@
 @inject UserService UserService
 @inject GroupService GroupService
 @inject StarredMessageService StarredMessageService
+@inject AgentService AgentService
 @inject HttpClient Http
 @inject JWTAuthenticationStateProvider AuthProvider
 @inject ChatHubClient Hub
@@ -12,12 +13,14 @@
 @inject IJSRuntime JS
 @rendermode InteractiveServer
 @using DevExpress.Blazor
+@using MessagingApp.Client.Models.Agent
 @inject IToastNotificationService ToastService
 @inject IDialogService DialogService
+@using Markdig
 
 <link href="css/MessengerLayout.css" rel="stylesheet" />
 
-<div class="custom-container @(selectedUser != null || selectedGroup != null || showStarredMessages ? "chat-open" : "")">
+<div class="custom-container @(selectedUser != null || selectedGroup != null || selectedAgent != null || showStarredMessages ? "chat-open" : "")">
 
 
     <div class="sidebar">
@@ -52,7 +55,7 @@
                                 <i class="bi bi-person-fill-add"></i> Create Group
                             </a>
                         </li>
-                         <li>
+                        <li>
                             <button class="dropdown-item text-warning" @onclick="ShowStarredMessages">
                                 <i class="bi bi-star-fill"></i> Starred Messages
                             </button>
@@ -132,11 +135,13 @@
                             <div class="search-container">
                                 <input type="text"
                                        class="search-box"
-                                       placeholder="Search conversations..." />
+                                       placeholder="Search conversations..."
+                                       @bind="searchText"
+                                       @bind:event="oninput" />
                             </div>
 
 
-                            @foreach (var convo in conversations)
+                            @foreach (var convo in FilteredConversations)
                             {
                                 <div class="conversation-item @(selectedUser?.Id == convo.UserId ? "active" : "")"
                                      @onclick="() => SelectConversation(convo)">
@@ -199,9 +204,9 @@
                             <!-- ONLINE USERS -->
                             <div class="mb-3">
 
-                              
+
                                 <p class="text-muted small text-center">New Conversation</p>
-                              
+
                                 @foreach (var user in users.Where(u => u.IsOnline))
                                 {
                                     <div class="conversation-item @(selectedUser?.Id == user.Id ? "active" : "")"
@@ -213,8 +218,8 @@
 
                                         <div class="conversation-details">
                                             <div class="conversation-users-wrapper">
-                                            <span class="conversation-name">@user.FullName</span>
-                                            <small class="online-dot">.</small>
+                                                <span class="conversation-name">@user.FullName</span>
+                                                <small class="online-dot">.</small>
                                             </div>
                                         </div>
                                     </div>
@@ -239,7 +244,7 @@
                                                 <span class="conversation-name">@user.FullName</span>
                                                 <small class="offline-dot">.</small>
                                             </div>
-                                          
+
                                         </div>
                                     </div>
                                 }
@@ -327,56 +332,44 @@
 
                     case SidebarSection.Agents:
                         <div class="px-2">
+                            @if (agents != null)
+                            {
+                                @foreach (var agent in agents)
+                                {
+                                    <div class="conversation-item @(selectedAgent?.Id == agent.Id ? "active" : "")"
+                                         @onclick="() => OpenAgentChat(agent)">
 
-                            <div class="conversation-item active">
-                                <div class="conversation-avatar">
-                                    <i class="bi bi-chat-dots-fill"></i>
-                                </div>
-                                <div class="conversation-details">
-                                    <div class="conversation-header">
-                                        <span>Chatbot 🤖</span>
-                                        <span class="text-muted small">Now</span>
+                                        <div class="conversation-avatar">
+                                            <i class="bi bi-chat-dots-fill"></i>
+                                        </div>
+                                        <div class="conversation-details">
+                                            <div class="conversation-header">
+                                                <span>@agent.Name</span>
+                                                <span class="text-muted small">Now</span>
+                                            </div>
+                                            <div class="conversation-preview">
+                                                Hello! How can I help you today?
+                                            </div>
+                                        </div>
+                                        <div class="dropdown" @onclick:stopPropagation="true">
+                                            <button class="btn btn-sm btn-light border-0" data-bs-toggle="dropdown">
+                                                ⋮
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end">
+                                                <li><button class="dropdown-item">Ai Agent Info</button></li>
+                                            </ul>
+                                        </div>
                                     </div>
-                                    <div class="conversation-preview">
-                                        Hello! How can I help you today?
-                                    </div>
-                                    <small class="text-muted">1 member</small>
+                                }
+                            }
+                            else
+                            {
+                                <div class="text-center p-3 text-muted">
+                                    Loading agents...
                                 </div>
-                                <div class="dropdown">
-                                    <button class="btn btn-sm btn-light border-0" data-bs-toggle="dropdown">
-                                        ⋮
-                                    </button>
-                                    <ul class="dropdown-menu dropdown-menu-end">
-                                        <li><button class="dropdown-item">Ai Agent Info</button></li>
-                                    </ul>
-                                </div>
-                            </div>
-
-                            <div class="conversation-item">
-                                <div class="conversation-avatar">
-                                    <i class="bi bi-chat-dots-fill"></i>
-                                </div>
-                                <div class="conversation-details">
-                                    <div class="conversation-header">
-                                        <span>Support Bot</span>
-                                        <span class="text-muted small">10:45 AM</span>
-                                    </div>
-                                    <div class="conversation-preview">
-                                        You have 3 new notifications.
-                                    </div>
-                                    <small class="text-muted">1 member</small>
-                                </div>
-                                <div class="dropdown">
-                                    <button class="btn btn-sm btn-light border-0" data-bs-toggle="dropdown">
-                                        ⋮
-                                    </button>
-                                    <ul class="dropdown-menu dropdown-menu-end">
-                                        <li><button class="dropdown-item">Ai Agent Info</button></li>
-                                    </ul>
-                                </div>
-                            </div>
-
+                            }
                         </div>
+
                         break;
 
                 }
@@ -409,20 +402,20 @@
                         @selectedMessageIds.Count selected
                     </span>
 
-                    
 
-                        @if (selectedMessageIds.Any())
-                        {
-                        <button class="btn btn-sm btn-outline-warning bg-transparent" @onclick="() => ToggleStar(selectedMessageIds)">
-                                @{
-                                    // Check if the first selected message is already starred to decide the icon
-                                    var firstId = selectedMessageIds.First();
-                                    var isFirstStarred = messages.FirstOrDefault(m => m.Id == firstId)?.IsStarred ?? false;
-                                }
-                                <i class="bi @(isFirstStarred ? "bi-star-fill text-warning" : "bi-star")"></i>                                
-                            </button>
-                        }
-                    
+
+                    @if (selectedMessageIds.Any())
+                    {
+                        <button class="btn btn-sm btn-outline-warning bg-transparent" @onclick="() => ToggleStar(ResolveSelectedStarredMessages())">
+                            @{
+                                // Check if the first selected message is already starred to decide the icon
+                                var firstId = selectedMessageIds.First();
+                                var isFirstStarred = messages.FirstOrDefault(m => m.Id == firstId)?.IsStarred ?? false;
+                            }
+                            <i class="bi @(isFirstStarred ? "bi-star-fill text-warning" : "bi-star")"></i>
+                        </button>
+                    }
+
 
                     <button class="btn btn-outline-danger btn-sm mt-1 mb-1"
                             disabled="@(!selectedMessageIds.Any())"
@@ -561,9 +554,9 @@
             <!-- CHAT AREA -->
             <!-- MAIN CONTENT -->
             <div class="flex-grow-1 d-flex align-items-center justify-content-center bg-light">
-                
 
-                @if (selectedUser == null && selectedGroup == null && showStarredMessages == false)
+
+                @if (selectedUser == null && selectedGroup == null && showStarredMessages == false && selectedAgent == null)
                 {
                     <!-- EMPTY STATE -->
                     <div class="d-flex flex-column align-items-center justify-content-center h-100 text-center py-5">
@@ -598,30 +591,60 @@
                         {
                             <!-- HEADER -->
                             <div class="chat-header-fancy">
-                                <div class="chat-user-avatar">
+                                <div class="chat-user-avatar user-chat-avatar">
                                     @(selectedUser.FullName.Split(' ').Select(n => n[0]).FirstOrDefault())
                                 </div>
                                 <div>
                                     <h5 class="mb-0">@selectedUser.FullName</h5>
-                                    <small class="text-muted">
+                                    <small class="text-muted d-flex align-items-center gap-1">
+                                        <span class="status-dot @(selectedUser.IsOnline ? "online" : "offline")"></span>
                                         @(selectedUser.IsOnline ? "Online" : "Offline")
                                     </small>
+                                    @if (typingUserId != null)
+                                    {
+                                        <div>
+                                            <small class="typing-indicator text-muted">
+                                                <span class="typing-dot"></span>
+                                                <span class="typing-dot"></span>
+                                                <span class="typing-dot"></span>
+                                                typing...
+                                            </small>
+                                        </div>
+                                    }
                                 </div>
                             </div>
 
                             <!-- MESSAGES -->
-                            <div class="flex-grow-1 border rounded p-2 mb-2 overflow-auto">
+                            <div id="chatMessages" class="flex-grow-1 border rounded p-2 mb-2 overflow-auto user-chat-messages">
                                 @foreach (var msg in messages)
                                 {
                                     var isSent = msg.SenderId.ToString() == currentUserId;
                                     var isSelected = selectedMessageIds.Contains(msg.Id);
 
-                                    <div class="message-wrapper @(isSent ? "sent-wrap" : "received-wrap")"
+                                    <div class="message-wrapper @(isSent ? "sent-wrap" : "received-wrap user-message-wrap")"
                                          @onclick="() => OnMessageClick(msg.Id)">
 
-                                        <div class="chat-message @(isSent ? "sent" : "received") @(isSelected ? "selected" : "")">
-                                            <strong>@(isSent ? "You" : selectedUser.FullName)</strong>
-                                            <span class="message-text">@msg.Content</span>
+                                        @if (!isSent)
+                                        {
+                                            <!-- User Avatar -->
+                                            <div class="user-message-avatar">
+                                                @(selectedUser.FullName.Split(' ').Select(n => n[0]).FirstOrDefault())
+                                            </div>
+                                        }
+
+                                        <div class="chat-message @(isSent ? "sent user-sent-message" : "received user-received-message") @(isSelected ? "selected" : "")">
+                                            @if (!isSent)
+                                            {
+                                                <div class="message-sender-name">@selectedUser.FullName</div>
+                                            }
+
+                                            <div class="message-content @(isSent ? "sent-content" : "received-content")">
+                                                @msg.Content
+                                            </div>
+
+                                            <div class="message-time">
+                                                @msg.CreatedAt.ToLocalTime().ToString("HH:mm")
+                                            </div>
 
                                             @if (isSelected)
                                             {
@@ -637,12 +660,14 @@
                         else if (selectedGroup != null)
                         {
                             <!-- HEADER -->
-                            <div class="chat-header-fancy">
-                                <div class="chat-user-avatar">
+                            <div class="chat-header-fancy group-chat-header">
+                                <div class="chat-user-avatar group-avatar">
                                     @(selectedGroup.Name.Split(' ').Select(n => n[0]).FirstOrDefault())
                                 </div>
                                 <div>
-                                    <small class="text-muted">Group</small>
+                                    <small class="text-muted d-flex align-items-center gap-1">
+                                        <i class="bi bi-people-fill"></i> Group
+                                    </small>
                                     <h5 class="mb-0">@selectedGroup.Name</h5>
                                     <small class="text-muted">
                                         @selectedGroup.MembersCount members
@@ -651,18 +676,38 @@
                             </div>
 
                             <!-- MESSAGES -->
-                            <div class="flex-grow-1 border rounded p-2 mb-2 overflow-auto">
+                            <div id="chatMessages" class="flex-grow-1 border rounded p-2 mb-2 overflow-auto group-chat-messages">
                                 @foreach (var msg in groupMessages)
                                 {
                                     var isSent = msg.SenderId.ToString() == currentUserId;
                                     var isSelected = selectedMessageIds.Contains(msg.Id);
+                                    var senderName = isSent ? "You" : GetUserName(msg.SenderId);
+                                    var senderInitial = senderName.FirstOrDefault();
 
-                                    <div class="message-wrapper @(isSent ? "sent-wrap" : "received-wrap")"
+                                    <div class="message-wrapper @(isSent ? "sent-wrap" : "received-wrap group-message-wrap")"
                                          @onclick="() => OnMessageClick(msg.Id)">
 
-                                        <div class="chat-message @(isSent ? "sent" : "received") @(isSelected ? "selected" : "")">
-                                            <strong>@(isSent ? "You" : GetUserName(msg.SenderId))</strong>
-                                            <span class="message-text">@msg.Content</span>
+                                        @if (!isSent)
+                                        {
+                                            <!-- Group Member Avatar -->
+                                            <div class="group-member-avatar">
+                                                @senderInitial
+                                            </div>
+                                        }
+
+                                        <div class="chat-message @(isSent ? "sent group-sent-message" : "received group-received-message") @(isSelected ? "selected" : "")">
+                                            @if (!isSent)
+                                            {
+                                                <div class="message-sender-name group-sender">@senderName</div>
+                                            }
+
+                                            <div class="message-content @(isSent ? "sent-content" : "received-content")">
+                                                @msg.Content
+                                            </div>
+
+                                            <div class="message-time">
+                                                @msg.SentAt.ToLocalTime().ToString("HH:mm")
+                                            </div>
 
                                             @if (isSelected)
                                             {
@@ -672,38 +717,47 @@
                                     </div>
                                 }
                             </div>
-
                         }
                         else if (showStarredMessages)
                         {
-                            
-                                <div class="starred-messages-panel border rounded p-3 mb-2 bg-light">
-                                    <div class="d-flex justify-content-between mb-2">
-                                        <strong>⭐ Starred Messages</strong>
-                                        <button class="btn btn-sm btn-light" @onclick="CloseStarredMessages">✖</button>
-                                    </div>
 
+                            <div class="starred-messages-panel border rounded p-3 mb-2 bg-light">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <strong>⭐ Starred Messages</strong>
+                                    <button class="btn btn-sm btn-light" @onclick="CloseStarredMessages">✖</button>
+                                </div>
+
+                                <div class="starred-messages-list">
                                     @if (starredMessages.Any())
                                     {
                                         @foreach (var msg in starredMessages)
                                         {
-                                        <div class="starred-message d-flex align-items-start gap-2 mb-1 p-2 border rounded">
+                                            <div class="starred-message d-flex flex-column gap-1 mb-1 p-2 border rounded">
 
-                                            <div class="flex-grow-1">
-                                                <span class="small text-muted d-block">
-                                                    @FormatMessageTime(msg.StarredAtUtc)
-                                                </span>
-                                                <span>@msg.Content</span>
+                                                <!-- Metadata line: time, sender, type + Star button -->
+                                                <div class="d-flex justify-content-between align-items-center">
+                                                    <!-- Left side: metadata -->
+                                                    <div class="d-flex align-items-center gap-3">
+                                                        <span class="text-muted small">@FormatMessageTime(msg.StarredAtUtc)</span>
+                                                        <span class="text-muted small">@msg.Fullname</span>
+                                                        <span class="text-muted small">@msg.Type</span>
+                                                    </div>
+
+                                                    <!-- Right side: Unstar button -->
+                                                    <button class="btn btn-sm btn-outline-warning"
+                                                            title="Unstar"
+                                                            type="button"
+                                                            @onclick="() => ToggleStar(new[] { msg })">
+                                                        <i class="bi bi-star-fill"></i>
+                                                    </button>
+                                                </div>
+
+                                                <!-- Message content -->
+                                                <div class="p-1">@msg.Content</div>
+
                                             </div>
 
-                                            <button class="btn btn-sm btn-outline-warning"
-                                                    title="Unstar"
-                                                    type="button"
-                                                    @onclick="() => ToggleStar(new[] { msg.MessageId })">
-                                                <i class="bi bi-star-fill"></i>
-                                            </button>
 
-                                        </div>
 
                                         }
                                     }
@@ -712,57 +766,179 @@
                                         <p class="text-muted small">No starred messages</p>
                                     }
                                 </div>
-                            
+                            </div>
                         }
-
-                        @if (selectedBot != null)
+                        else if (selectedAgent != null)
                         {
-                            <div class="text-muted small mb-2">
-                                Chatting with bot: <strong>@selectedBot.Name</strong>
-                                <button class="btn btn-sm btn-link text-danger p-0" @onclick="() => selectedBot = null" style="text-decoration:none">x</button>
+                            <!-- HEADER -->
+                            <div class="chat-header-fancy">
+                                <div class="chat-user-avatar agent-avatar">
+                                    <i class="bi bi-robot"></i>
+                                </div>
+                                <div>
+                                    <h5 class="mb-0">@selectedAgent.Name</h5>
+                                    <small class="text-muted">AI Assistant</small>
+
+                                    @if (typingUserId != null && typingUserId == selectedAgent.Id.ToString())
+                                    {
+                                        <div>
+                                            <small class="typing-indicator text-muted">
+                                                typing...
+                                            </small>
+                                        </div>
+                                    }
+                                     <!-- Show attached file in header -->
+        @if (attachedFile != null)
+        {
+            <div class="attached-file-preview">
+                <i class="bi bi-file-earmark"></i>
+                <span class="file-name">@attachedFile.Name</span>
+                <span class="file-size">(@FormatFileSize(attachedFile.Size))</span>
+                <button class="btn-remove-file" @onclick="RemoveAttachment">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+        }
+    </div>
+    
+    <!-- Attachment Icon in Header -->
+    <label for="fileInput" class="attachment-icon-header" title="Attach file">
+        <i class="bi bi-paperclip"></i>
+    </label>
+    <InputFile id="fileInput" 
+               OnChange="HandleAttachment" 
+               style="display: none;" 
+               accept="image/*,.pdf,.doc,.docx,.txt" />
+                                </div>
+                            
+
+                            <!-- MESSAGES -->
+                            <div id="chatMessages" class="flex-grow-1 border rounded p-2 mb-2 overflow-auto agent-chat-messages">
+                                @foreach (var msg in messages)
+                                {
+                                    var isSent = msg.SenderId.ToString() == currentUserId;
+                                    var isSelected = selectedMessageIds.Contains(msg.Id);
+                                    var isCurrentlyTypewriting = isTypewriting && msg.Id == typewritingMessageId;
+
+                                    <div class="message-wrapper @(isSent ? "sent-wrap" : "received-wrap agent-message-wrap")"
+                                         @onclick="() => OnMessageClick(msg.Id)">
+
+                                        @if (!isSent)
+                                        {
+                                            <!-- Agent Avatar -->
+                                            <div class="agent-message-avatar">
+                                                <i class="bi bi-stars"></i>
+                                            </div>
+                                        }
+
+                                        <div class="chat-message @(isSent ? "sent user-message" : "received agent-message") @(isSelected ? "selected" : "")">
+                                            @if (!isSent)
+                                            {
+                                                <div class="agent-message-header">
+                                                    <strong class="agent-name">@selectedAgent.Name</strong>
+                                                    <span class="agent-badge">AI</span>
+                                                </div>
+                                            }
+                                            else
+                                            {
+                                                <strong class="user-label">You</strong>
+                                            }
+
+                                            <div class="message-content @(isSent ? "" : "agent-content")">
+                                                @if (isCurrentlyTypewriting)
+                                                {
+                                                    @((MarkupString)FormatAgentMessage(msg.Content))
+                                                    <span class="typing-cursor">|</span>
+                                                }
+                                                else
+                                                {
+                                                    @((MarkupString)FormatAgentMessage(msg.Content))
+                                                }
+                                            </div>
+
+                                            @if (isSelected)
+                                            {
+                                                <span class="selection-tick">✔</span>
+                                            }
+                                        </div>
+                                    </div>
+                                }
+
+                                <!-- THINKING INDICATOR -->
+                                @if (isAgentThinking)
+                                {
+                                    <div class="message-wrapper received-wrap agent-message-wrap">
+                                        <div class="agent-message-avatar">
+                                            <i class="bi bi-stars"></i>
+                                        </div>
+                                        <div class="chat-message received agent-message thinking">
+                                            <div class="agent-message-header">
+                                                <strong class="agent-name">@selectedAgent.Name</strong>
+                                                <span class="agent-badge">AI</span>
+                                            </div>
+                                            <div class="message-content agent-content">
+                                                <span class="thinking-text">thinking</span>
+                                                <span class="thinking-dots">
+                                                    <span class="dot"></span>
+                                                    <span class="dot"></span>
+                                                    <span class="dot"></span>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
                             </div>
                         }
 
                         <!-- INPUT -->
                         @if (!showStarredMessages)
                         {
-                        <div class="d-flex gap-2 chat-input-area">
-                            <input class="form-control chat-input"
-                                   placeholder="Type a message..."
-                                   @bind="newMessage"
-                                   @oninput="OnInput" />
-
-                            <button class="btn btn-secondary chat-send-btn"
-                                    @onclick="Send">
-                                Send
-                            </button>
-
-                            @* -------------------------------------- Ai Bot List Pending Start ------------------------------------- *@
-
-                            @if (showBotList)
-                            {
-                                <div class="bot-list-container">
-                                    <div class="bot-list-header">
-                                        <span>🤖 AI Assistants</span>
-                                        <button class="bot-close-btn" @onclick="() => showBotList = false">✖</button>
-                                    </div>
-                                    <ul class="bot-list">
-                                        @foreach (var bot in aiBots)
-                                        {
-                                            <li class="bot-item" @onclick="() => SelectBot(bot)">
-                                                <div class="bot-avatar">🤖</div>
-                                                <div class="bot-details">
-                                                    <span class="bot-name">@bot.Name</span>
-                                                    <span class="bot-status">Available</span>
-                                                </div>
-                                                <div class="bot-arrow">→</div>
-                                            </li>
-                                        }
-                                    </ul>
+                            <div class="d-flex gap-2 chat-input-area">
+                                <div class="input-wrapper @(selectedBot != null ? "bot-active" : "")">
+                                    @if (selectedBot != null)
+                                    {
+                                        <span class="input-bot-label">@selectedBot.Name:</span>
+                                    }
+                                    <input class="form-control chat-input"
+                                           placeholder="Type a message..."
+                                           @bind="newMessage"
+                                           @oninput="OnInput"
+                                           @onkeydown="HandleKeyDown"
+                                           style="@(selectedBot != null ? $"padding-left: {CalculatePadding(selectedBot.Name)}px;" : "")" />
                                 </div>
-                            }
-                        </div>
-                        }
+
+                    
+
+                                <button class="btn btn-secondary chat-send-btn"
+                                        @onclick="Send">
+                                    Send
+                                </button>
+
+                                @* -------------------------------------- Ai Bot List Pending Start ------------------------------------- *@
+                                @if (showBotList)
+                                {
+                                    <div class="bot-list-container">
+                                        <div class="bot-list-header">
+                                            <span>🤖 AI Assistants</span>
+                                            <button class="bot-close-btn" @onclick="() => showBotList = false">✖</button>
+                                        </div>
+                                        <ul class="bot-list">
+                                            @foreach (var bot in aiBots)
+                                            {
+                                                <li class="bot-item" @onclick="() => SelectBot(bot)">
+                                                    <div class="bot-avatar">🤖</div>
+                                                    <div class="bot-details">
+                                                        <span class="bot-name">@bot.Name</span>
+                                                        <span class="bot-status">Available</span>
+                                                    </div>
+                                                    <div class="bot-arrow">→</div>
+                                                </li>
+                                            }
+                                        </ul>
+                                    </div>
+                                }
+                            </div>
+                        }@* input end *@
                     </div>
                     @* -------------------------------------- Ai Bot List Pending Ends ------------------------------------- *@
                 }
@@ -773,6 +949,16 @@
 
     }
 </div>
+
+<script>
+    window.scrollToBottom = (id) => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.scrollTop = el.scrollHeight;
+        }
+    };
+</script>
+
 
 @code {
     List<UserDto> users = new();
@@ -799,10 +985,21 @@
     ).ToUpper();
 
     string newMessage = "";
+    private System.Timers.Timer? typingTimer;
+    private string? typingUserId;
     List<ConversationDto>? conversations { get; set; }
     ConversationDto? selectedConversation;
     bool isMiniSidebarExpanded = false;
     bool isSelectionMode = false;
+    private string searchText = string.Empty;
+
+    private IEnumerable<ConversationDto> FilteredConversations =>
+    string.IsNullOrWhiteSpace(searchText)
+        ? conversations ?? Enumerable.Empty<ConversationDto>()
+        : conversations!
+            .Where(c =>
+                c.FullName.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+                (c.LastMessage?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false));
 
     HashSet<Guid> selectedMessageIds = new();
     List<GroupDto> groups = new();
@@ -818,7 +1015,16 @@
     Guid selectedUserId;
     private bool showStarredMessages = false;
     private List<StarredMessageDto> starredMessages = new();
-    // @* -------------------------------------- Ai Bot List Pending ------------------------------------- *@
+
+    private string typewriterContent = "";
+    private bool isTypewriting = false;
+    private System.Threading.Timer? typewriterTimer;
+    private int typewriterIndex = 0;
+    private Guid? typewritingMessageId = null;
+    // File attachment properties
+    private IBrowserFile? attachedFile;
+    private const long maxFileSize = 10 * 1024 * 1024; // 10MB
+                                                       // @* -------------------------------------- Ai Bot List Pending ------------------------------------- *@
     public class AiBot
     {
         public Guid Id { get; set; }
@@ -828,24 +1034,42 @@
     // Hardcoded AI bots
     private List<AiBot> aiBots = new List<AiBot>
     {
-        new AiBot { Id = Guid.NewGuid(), Name = "Support Bot" },
+        new AiBot { Id = Guid.NewGuid(), Name = "Agent" },
         new AiBot { Id = Guid.NewGuid(), Name = "Programming Bot" },
         new AiBot { Id = Guid.NewGuid(), Name = "UserInterface Bot" }
     };
 
-    private void OnInput(ChangeEventArgs e)
+    private async Task OnInput(ChangeEventArgs e)
     {
         newMessage = e.Value?.ToString() ?? "";
 
-        // Show bot list if user types "/"
+        if (selectedUser != null)
+        {
+            await Hub.TypingAsync(selectedUser.Id.ToString());
+
+            typingTimer?.Stop();
+            typingTimer = new System.Timers.Timer(1000);
+            typingTimer.Elapsed += async (_, _) =>
+            {
+                await Hub.StopTypingAsync(selectedUser.Id.ToString());
+                typingTimer?.Stop();
+            };
+            typingTimer.Start();
+        }
+
         showBotList = selectedGroup != null && newMessage.StartsWith("/");
     }
+
     private void SelectBot(AiBot bot)
     {
         selectedBot = bot;
         showBotList = false;
         newMessage = ""; // clear input
     }
+
+    List<AgentDto>? agents { get; set; }
+    AgentDto? selectedAgent;
+    private bool isAgentThinking = false;
 
     private bool showBotList = false;
     private AiBot? selectedBot = null;
@@ -898,6 +1122,9 @@
             // Load groups for current user
             groups = await GroupService.GetGroupsAsync();
 
+            // Load agents avaliable
+            agents = await AgentService.GetAgentsAsync();
+
             // Connect SignalR AFTER fetching users
             await Hub.ConnectAsync(token, Nav);
 
@@ -906,6 +1133,8 @@
 
             Hub.GroupMessageReceived += OnGroupMessageReceived;
 
+            Hub.UserTyping += OnUserTyping;
+            Hub.UserStoppedTyping += OnUserStoppedTyping;
 
             Hub.UserOnline += userId =>
             {
@@ -945,7 +1174,6 @@
         return user?.FullName ?? "Unknown";
     }
 
-
     void ToggleMiniSidebar()
     {
         isMiniSidebarExpanded = !isMiniSidebarExpanded;
@@ -958,17 +1186,23 @@
         selectedGroup = null;
         CurrentGroupId = null;
         showStarredMessages = false;
+        selectedAgent = null;
 
         try
         {
             messages = await MessageService.GetChatAsync(user.Id);
+
+            StateHasChanged();
+
+            // Scroll after messages load
+            await Task.Delay(100);
+            await JS.InvokeVoidAsync("scrollToBottom", "chatMessages");
         }
         catch (Exception ex)
         {
             initError = $"Error fetching messages: {ex.Message}";
         }
 
-        StateHasChanged();
     }
 
     async Task SelectConversation(ConversationDto convo)
@@ -983,6 +1217,7 @@
         selectedConversation = convo;
 
         showStarredMessages = false;
+        selectedAgent = null;
 
         // 🔥 Sync selectedUser from conversation
         selectedUser = users.FirstOrDefault(u => u.Id == convo.UserId)
@@ -993,7 +1228,11 @@
                            };
 
         messages = await MessageService.GetChatAsync(convo.UserId);
+        StateHasChanged();
 
+        // Scroll after messages load
+        await Task.Delay(100);
+        await JS.InvokeVoidAsync("scrollToBottom", "chatMessages");
         StateHasChanged();
     }
 
@@ -1007,6 +1246,7 @@
             var msgText = newMessage;
             var now = DateTime.UtcNow;
 
+            await Hub.StopTypingAsync(selectedUser.Id.ToString());
             await Hub.SendMessageAsync(selectedUser.Id.ToString(), msgText);
 
             // 🔥 UPDATE SIDEBAR
@@ -1015,6 +1255,13 @@
                 msgText,
                 now
             );
+
+            newMessage = "";
+            StateHasChanged();
+
+            // Scroll after sending
+            await Task.Delay(100);
+            await JS.InvokeVoidAsync("scrollToBottom", "chatMessages");
         }
         else if (selectedGroup != null && selectedBot != null)
         {
@@ -1037,11 +1284,149 @@
                 msgText,
                 now
             );
+            newMessage = "";
+            StateHasChanged();
+
+            // Scroll after sending
+            await Task.Delay(100);
+            await JS.InvokeVoidAsync("scrollToBottom", "chatMessages");
         }
+        else if (selectedAgent != null)
+        {
+            if (string.IsNullOrWhiteSpace(newMessage) || selectedAgent == null)
+                return;
+
+               // Save user message
+            await Hub.SendMessageAsync(selectedAgent.Id.ToString(), newMessage);
+
+            isAgentThinking = true;
+            await InvokeAsync(StateHasChanged);
+
+            // Scroll to user message
+            await Task.Delay(100);
+            await JS.InvokeVoidAsync("scrollToBottom", "chatMessages");
+
+            // Prepare chat history
+            var chatHistory = messages.Select(m => new AgentChatHistoryItem
+                {
+                    Role = m.SenderId.ToString() == currentUserId ? "user" : "assistant",
+                    Content = m.Content,
+                    Timestamp = m.CreatedAt.ToString("o")
+                }).ToList();
+
+            // Send to agent API
+            var agentResponse = await AgentService.SendMessageToAgentAsync(newMessage, chatHistory);
+
+            if (agentResponse != null)
+            {
+
+                var agentMsg = new MessageDto
+                    {
+                        Id = Guid.NewGuid(),
+                        SenderId = selectedAgent.Id,
+                        Content = agentResponse.Content,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                // Save bot response to DB
+                await Hub.SendMessageFromAgent(selectedAgent.Id.ToString(), currentUserId, agentResponse.Content);
+             
+
+                isAgentThinking = false;
+                StateHasChanged();
+
+                // Scroll to user message
+                await Task.Delay(100);
+                await JS.InvokeVoidAsync("scrollToBottom", "chatMessages");
+            }
+        }
+
+
+    //         //mock Response start
+    //         if (string.IsNullOrWhiteSpace(newMessage))
+    //             return;
+
+    //         // 1️⃣ Add user message
+    //         var userMsg = new MessageDto
+    // {
+    //     Id = Guid.NewGuid(),
+    //     SenderId = Guid.Parse(currentUserId),
+    //     Content = newMessage,
+    //     CreatedAt = DateTime.UtcNow
+    // };
+
+    //         messages.Add(userMsg);
+
+    //         newMessage = string.Empty;
+
+    //         // 2️⃣ Show thinking
+    //         isAgentThinking = true;
+    //         StateHasChanged();
+
+    //         // Scroll to user message
+    //         await Task.Delay(100);
+    //         await JS.InvokeVoidAsync("scrollToBottom", "chatMessages");
+
+    //         // 3️⃣ Fake delay (simulate API)
+    //         await Task.Delay(2000);
+
+    //         // 4️⃣ Add fake agent reply
+    //         var agentMsg = new MessageDto
+    // {
+    //     Id = Guid.NewGuid(),
+    //     SenderId = selectedAgent.Id,
+    //     Content = GetFakeResponse(userMsg.Content),
+    //     CreatedAt = DateTime.UtcNow
+    // };
+
+    //         isAgentThinking = false;
+    //         StartTypewriterEffect(agentMsg);
+
+    //         StateHasChanged();
+
+    //     }
+    //     //mock Response start
 
         newMessage = "";
         StateHasChanged();
     }
+
+    private string GetFakeResponse(string userMessage)
+    {
+        userMessage = userMessage.ToLower();
+
+        if (userMessage.Contains("hello"))
+            return @"
+# AI Assistant Response
+
+Hello! This is a simple markdown test.
+
+## Text Formatting
+
+- Bold example: **Bold Text**
+- Italic example: *Italic Text*
+- Inline code: `Console.WriteLine(""Hello"");`
+
+---
+
+## Simple Code Block
+
+    public class Test
+    {
+        public void SayHello()
+        {
+            Console.WriteLine(""Hello World"");
+        }
+    }
+
+End of message.
+";
+
+
+    if (userMessage.Contains("price"))
+        return "The current price is fluctuating. Please check the market dashboard.";
+
+    return "That's interesting. Tell me more about it.";
+}
 
 
     void OnMessageReceived(MessageDto msg)
@@ -1054,6 +1439,33 @@
         if (selectedUser != null && selectedUser.Id == otherUserId)
         {
             messages.Add(msg);
+            InvokeAsync(async () =>
+     {
+     StateHasChanged();
+     await Task.Delay(100); // Small delay to ensure render
+     await JS.InvokeVoidAsync("scrollToBottom", "chatMessages");
+     });
+        }
+        // 🔥 Handle agent chat
+        else if (selectedAgent != null && selectedAgent.Id.ToString() == otherUserId.ToString())
+        {
+            // Check if message is from agent (not from current user)
+            if (msg.SenderId.ToString() != currentUserId)
+            {
+                isAgentThinking = false;
+                StartTypewriterEffect(msg);
+            }
+            else
+            {
+                // User's own message in agent chat - add normally
+                messages.Add(msg);
+                InvokeAsync(async () =>
+    {
+    StateHasChanged();
+    await Task.Delay(100);
+    await JS.InvokeVoidAsync("scrollToBottom", "chatMessages");
+    });
+            }
         }
 
         // 🔥 ALWAYS update sidebar
@@ -1076,13 +1488,18 @@
         showGroupInfo = true;
     }
 
-
     void OnGroupMessageReceived(GroupMessageDto msg)
     {
         if (selectedGroup != null && msg.GroupId == selectedGroup.Id)
         {
             groupMessages.Add(msg);
 
+            InvokeAsync(async () =>
+    {
+    StateHasChanged();
+    await Task.Delay(100);
+    await JS.InvokeVoidAsync("scrollToBottom", "chatMessages");
+    });
         }
         // 🔥 ALWAYS update sidebar
         UpdateGroupConversationPreview(
@@ -1173,6 +1590,21 @@
                 );
 
             }
+        }else if(selectedAgent != null){
+            success = await MessageService
+                .DeleteMessagesAsync(selectedMessageIds);
+
+            if (success)
+                messages.RemoveAll(m => selectedMessageIds.Contains(m.Id));
+
+            ToastService.ShowToast(new ToastOptions
+                {
+                    Title = "Success!",
+                    Text = "Message Deleted successfully.",
+                    RenderStyle = ToastRenderStyle.Success,
+                    DisplayTime = TimeSpan.FromSeconds(5),
+                    ThemeMode = ToastThemeMode.Pastel
+                });
         }
         else
         {
@@ -1199,10 +1631,10 @@
             if (lastMsg != null)
             {
                 UpdateConversationPreview(
-    selectedUser!.Id,
-    lastMsg?.Content,
-    lastMsg.CreatedAt
-            );
+                    selectedUser!.Id,
+                    lastMsg?.Content,
+                    lastMsg.CreatedAt
+                    );
             }
         }
 
@@ -1235,7 +1667,6 @@
 
         InvokeAsync(StateHasChanged);
     }
-
 
     void UpdateConversationPreview(Guid otherUserId, string? lastMessage, DateTime time)
     {
@@ -1273,7 +1704,6 @@
 
         InvokeAsync(StateHasChanged);
     }
-
 
     void OpenAddMemberModal()
     {
@@ -1416,12 +1846,17 @@
         selectedUser = null;
         selectedConversation = null;
         showStarredMessages = false;
+        selectedAgent = null;
 
         // Join the new group
         await Hub.JoinGroupAsync(group.Id);
 
         // Load existing messages
         groupMessages = await GroupMessageService.GetGroupMessagesAsync(group.Id);
+
+        StateHasChanged();
+
+        await JS.InvokeVoidAsync("scrollToBottom", "chatMessages");
 
         StateHasChanged();
     }
@@ -1462,13 +1897,14 @@
             .ToList();
     }
 
-     private async Task ShowStarredMessages()
+    private async Task ShowStarredMessages()
     {
         selectedGroup = null;
         selectedUser = null;
-        
+        selectedAgent = null;
+
         // Load starred messages from your service
-        starredMessages = await StarredMessageService.GetStarredMessagesAsync();
+        starredMessages = await StarredMessageService.GetAllStarredMessagesAsync();
         foreach (var msg in messages)
         {
             msg.IsStarred = starredMessages.Any(s => s.MessageId == msg.Id);
@@ -1486,34 +1922,42 @@
         selectedGroup = null;
     }
 
-    private async Task ToggleStar(IEnumerable<Guid> messageIds)
+    private async Task ToggleStar(IEnumerable<StarredMessageDto> starredMessagesToUpdate)
     {
         try
         {
-            // ToList() prevents "Collection Modified" errors if messageIds
-            // is bound directly to your selection list
-            var idsToUpdate = messageIds.ToList();
+            var list = starredMessagesToUpdate.ToList();
 
-            foreach (var id in idsToUpdate)
+            foreach (var item in list)
             {
-                await StarredMessageService.ToggleStarAsync(id);
+                if (item.Type == "Group Message")
+                {
+                    await StarredMessageService.ToggleGroupStarAsync(item.MessageId);
 
-                // Update UI locally
-                var msg = messages.FirstOrDefault(m => m.Id == id);
-                if (msg != null)
-                    msg.IsStarred = !msg.IsStarred;
+                    var groupMsg = groupMessages.FirstOrDefault(m => m.Id == item.MessageId);
+                    if (groupMsg != null)
+                        groupMsg.IsStarred = !groupMsg.IsStarred;
+                }
+                else
+                {
+                    await StarredMessageService.ToggleStarAsync(item.MessageId);
+
+                    var msg = messages.FirstOrDefault(m => m.Id == item.MessageId);
+                    if (msg != null)
+                        msg.IsStarred = !msg.IsStarred;
+                }
             }
 
             ToastService.ShowToast(new ToastOptions
                 {
                     Title = "Success",
-                    Text = "Update complete.",
+                    Text = $"{list.Count} message(s) updated successfully.",
                     RenderStyle = ToastRenderStyle.Success,
                     DisplayTime = TimeSpan.FromSeconds(3),
                     ThemeMode = ToastThemeMode.Pastel
                 });
         }
-        catch (Exception)
+        catch
         {
             ToastService.ShowToast(new ToastOptions
                 {
@@ -1530,14 +1974,61 @@
             isSelectionMode = false;
 
             if (showStarredMessages)
-                starredMessages = await StarredMessageService.GetStarredMessagesAsync();
+                starredMessages = await StarredMessageService.GetAllStarredMessagesAsync();
 
             StateHasChanged();
         }
     }
 
+    //Helper method for StarredMessages
+    private IEnumerable<StarredMessageDto> ResolveSelectedStarredMessages()
+    {
+        // ⭐ Starred Messages View
+        if (showStarredMessages)
+        {
+            return starredMessages
+                .Where(m => selectedMessageIds.Contains(m.MessageId));
+        }
 
+        // 👥 Group Chat View
+        if (selectedGroup != null)
+        {
+            return groupMessages
+                .Where(m => selectedMessageIds.Contains(m.Id))
+                .Select(m => new StarredMessageDto
+                    {
+                        MessageId = m.Id,
+                        Type = "Group Message"
+                    });
+        }
 
+        // 👤 Private Chat View
+        return messages
+            .Where(m => selectedMessageIds.Contains(m.Id))
+            .Select(m => new StarredMessageDto
+                {
+                    MessageId = m.Id,
+                    Type = "Private Message"
+                });
+    }
+
+    private void OnUserTyping(string userId)
+    {
+        if (selectedUser?.Id == Guid.Parse(userId))
+        {
+            typingUserId = userId;
+            InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private void OnUserStoppedTyping(string userId)
+    {
+        if (typingUserId == userId)
+        {
+            typingUserId = null;
+            InvokeAsync(StateHasChanged);
+        }
+    }
 
 
     public static string FormatMessageTime(DateTime sentAt)
@@ -1567,5 +2058,199 @@
             // Older → show date
             return sent.ToString("dd/MM/yyyy"); // or "MMM dd, yyyy"
         }
+    }
+
+    private int CalculatePadding(string botName)
+    {
+        // Calculate padding based on bot name length (approximately 8px per character + base padding)
+        return 20 + (botName.Length * 8);
+    }
+    private void HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Backspace" && string.IsNullOrEmpty(newMessage) && selectedBot != null)
+        {
+            selectedBot = null;
+        }
+    }
+
+    private async Task OpenAgentChat(AgentDto agent)
+    {
+        selectedUser = null;
+        selectedConversation = null;
+        selectedGroup = null;
+        CurrentGroupId = null;
+        showStarredMessages = false;
+        selectedAgent = agent;
+
+        messages = await MessageService.GetChatAsync(selectedAgent.Id);   
+        
+        StateHasChanged();
+
+        await JS.InvokeVoidAsync("scrollToBottom", "chatMessages");
+
+        StateHasChanged();
+    }
+
+    private async void StartTypewriterEffect(MessageDto message)
+    {
+        // Stop any existing typewriter animation
+        typewriterTimer?.Dispose();
+
+        isTypewriting = true;
+        typewriterIndex = 0;
+        typewritingMessageId = message.Id;
+
+        // Check if message already exists (to avoid duplicates)
+        var existingMsg = messages.FirstOrDefault(m => m.Id == message.Id);
+
+        if (existingMsg == null)
+        {
+            // Add a placeholder message with empty content
+            var typingMessage = new MessageDto
+                {
+                    Id = message.Id,
+                    SenderId = message.SenderId,
+                    ReceiverId = message.ReceiverId,
+                    Content = "",
+                    CreatedAt = message.CreatedAt
+                };
+            messages.Add(typingMessage);
+        }
+        else
+        {
+            // Clear existing content for animation
+            existingMsg.Content = "";
+        }
+
+        await InvokeAsync(StateHasChanged);
+
+        // Start typing animation
+        string fullContent = message.Content;
+        int speed = 5; // milliseconds per character - lower = faster
+        string currentContent = ""; // Local variable for this animation
+
+        _ = Task.Run(async () =>
+        {
+            for (int i = 0; i < fullContent.Length; i++)
+            {
+                currentContent += fullContent[i]; // Build content character by character
+
+                // Update the message content
+                var msg = messages.FirstOrDefault(m => m.Id == message.Id);
+                if (msg != null)
+                {
+                    msg.Content = currentContent; // Use local variable instead of typewriterContent
+                }
+
+                await InvokeAsync(StateHasChanged);
+
+                // Scroll every few characters for better performance
+                if (i % 5 == 0 || i == fullContent.Length - 1)
+                {
+                    await ScrollToBottom();
+                }
+
+                await Task.Delay(speed);
+            }
+
+            // Typing complete
+            isTypewriting = false;
+            typewritingMessageId = null;
+            await InvokeAsync(StateHasChanged);
+            await ScrollToBottom();
+        });
+    }
+
+    private async Task ScrollToBottom()
+    {
+        try
+        {
+            await InvokeAsync(async () =>
+            {
+                await JS.InvokeVoidAsync("scrollToBottom", "chatMessages");
+            });
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Scroll error: {ex.Message}");
+        }
+    }
+    private string FormatAgentMessage(string content)
+    {
+        if (string.IsNullOrEmpty(content))
+            return content;
+
+        var pipeline = new MarkdownPipelineBuilder()
+            .UseAdvancedExtensions()
+            .Build();
+
+        return Markdig.Markdown.ToHtml(content, pipeline);
+    }
+
+    private async Task HandleAttachment(InputFileChangeEventArgs e)
+    {
+        try
+        {
+            var file = e.File;
+
+            // Check file size
+            if (file.Size > maxFileSize)
+            {
+                ToastService.ShowToast(new ToastOptions
+                    {
+                        Title = "File Too Large",
+                        Text = $"File size must be less than {maxFileSize / (1024 * 1024)}MB",
+                        RenderStyle = ToastRenderStyle.Warning,
+                        DisplayTime = TimeSpan.FromSeconds(3),
+                        ThemeMode = ToastThemeMode.Pastel
+                    });
+                return;
+            }
+
+            attachedFile = file;
+
+            ToastService.ShowToast(new ToastOptions
+                {
+                    Title = "File Attached",
+                    Text = $"{file.Name} attached successfully",
+                    RenderStyle = ToastRenderStyle.Success,
+                    DisplayTime = TimeSpan.FromSeconds(2),
+                    ThemeMode = ToastThemeMode.Pastel
+                });
+
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            ToastService.ShowToast(new ToastOptions
+                {
+                    Title = "Error",
+                    Text = "Failed to attach file",
+                    RenderStyle = ToastRenderStyle.Danger,
+                    DisplayTime = TimeSpan.FromSeconds(3),
+                    ThemeMode = ToastThemeMode.Pastel
+                });
+        }
+    }
+
+    private void RemoveAttachment()
+    {
+        attachedFile = null;
+        StateHasChanged();
+    }
+
+    private string FormatFileSize(long bytes)
+    {
+        string[] sizes = { "B", "KB", "MB", "GB" };
+        double len = bytes;
+        int order = 0;
+
+        while (len >= 1024 && order < sizes.Length - 1)
+        {
+            order++;
+            len = len / 1024;
+        }
+
+        return $"{len:0.##} {sizes[order]}";
     }
 }

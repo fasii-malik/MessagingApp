@@ -9,7 +9,10 @@ namespace MessagingApp.Server.Application.Interfaces
         Task RemoveAsync(Guid userId, Guid messageId);
         Task<bool> ExistsAsync(Guid userId, Guid messageId);
         Task<List<StarredMessageDto>> GetStarredMessagesAsync(Guid userId);
-
+        Task AddGroupMessageStarredAsync(GroupMessageStarred starredMessage);
+        Task RemoveGroupMessageStarredAsync(Guid userId, Guid groupMessageId);
+        Task<bool> GroupMessageExistsAsync(Guid userId, Guid groupMessageId);
+        Task<List<StarredMessageDto>> GetStarredGroupMessagesAsync(Guid userId);
     }
 
 }

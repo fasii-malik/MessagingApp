@@ -119,5 +119,12 @@ namespace MessagingApp.Server.Application.Services
 
             await _userRepository.SaveChangesAsync();
         }
+
+        public async Task<IEnumerable<User>> GetBotsAsync()
+        {
+            var bots = await _userRepository.GetAllUsersAsync(); // reuse repository method
+            return bots.Where(u => u.IsBot); // filter only bots
+        }
+
     }//class
 }//namespace

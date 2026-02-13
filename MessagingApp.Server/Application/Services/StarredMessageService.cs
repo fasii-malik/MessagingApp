@@ -36,6 +36,41 @@ namespace MessagingApp.Server.Application.Services
             return await _repo.GetStarredMessagesAsync(userId);
         }
 
+        // ---------- Group Messages ----------
+        public async Task ToggleGroupStarAsync(Guid userId, Guid groupMessageId)
+        {
+            if (await _repo.GroupMessageExistsAsync(userId, groupMessageId))
+            {
+                await _repo.RemoveGroupMessageStarredAsync(userId, groupMessageId);
+            }
+            else
+            {
+                await _repo.AddGroupMessageStarredAsync(new GroupMessageStarred
+                {
+                    UserId = userId,
+                    GroupMessageId = groupMessageId,
+                    StarredAt = DateTime.UtcNow
+                });
+            }
+        }
+
+        public async Task<List<StarredMessageDto>> GetStarredGroupMessagesAsync(Guid userId)
+        {
+            return await _repo.GetStarredGroupMessagesAsync(userId);
+        }
+
+        // ---------- Optional: Get All Starred Messages ----------
+        public async Task<List<StarredMessageDto>> GetAllStarredMessagesAsync(Guid userId)
+        {
+            var privateMessages = await _repo.GetStarredMessagesAsync(userId);
+            var groupMessages = await _repo.GetStarredGroupMessagesAsync(userId);
+
+            // Combine and order by StarredAt descending
+            return privateMessages
+                .Concat(groupMessages)
+                .OrderByDescending(m => m.StarredAtUtc)
+                .ToList();
+        }
     }
 
 }

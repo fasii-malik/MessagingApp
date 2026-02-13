@@ -24,6 +24,28 @@ namespace MessagingApp.Server.Controllers
             return Ok();
         }
 
+        // ---------- Toggle Group Message Star ----------
+        [HttpPost("group/{groupMessageId}")]
+        public async Task<IActionResult> ToggleGroupStar(Guid groupMessageId)
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                    ?? User.FindFirst("sub")?.Value;
+            await _service.ToggleGroupStarAsync(Guid.Parse(userId), groupMessageId);
+            return Ok();
+        }
+
+
+        // ---------- Get All Starred Messages ----------
+        [HttpGet("all")]
+        public async Task<IActionResult> GetAllStarredMessages()
+        {
+            var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+        ?? User.FindFirst("sub")?.Value;
+
+            var starredMessages = await _service.GetAllStarredMessagesAsync(Guid.Parse(userId));
+            return Ok(starredMessages);
+        }
+
         [HttpGet]
         public async Task<IActionResult> GetStarredMessages()
         {

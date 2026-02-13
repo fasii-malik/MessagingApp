@@ -4,6 +4,7 @@ using MessagingApp.Server.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace MessagingApp.Server.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260209104014_Add GroupMessageStarred & Nav Property")]
+    partial class AddGroupMessageStarredNavProperty
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -256,9 +259,6 @@ namespace MessagingApp.Server.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<bool>("IsBot")
-                        .HasColumnType("bit");
-
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
@@ -279,20 +279,8 @@ namespace MessagingApp.Server.Migrations
                             Email = "superadmin@messagingapp.com",
                             EmailConfirmed = true,
                             FullName = "Super Admin",
-                            IsBot = false,
-                            PasswordHash = "$2a$11$3IuUVHDYVI95LhlDEREZF.aaLtvkkbw00zTBgiAIHPPSHeGSTyEOi",
+                            PasswordHash = "$2a$11$hsaeoGTAw7qpg82yntJZe.6cCNWJ6opu5tRq.xHNLwtBlAjELK15u",
                             Role = 3
-                        },
-                        new
-                        {
-                            Id = new Guid("22222222-2222-2222-2222-222222222222"),
-                            CreatedAt = new DateTime(2024, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
-                            Email = "agent@messagingapp.local",
-                            EmailConfirmed = true,
-                            FullName = "Agent 🤖",
-                            IsBot = true,
-                            PasswordHash = "BOT_NO_LOGIN",
-                            Role = 1
                         });
                 });
 
