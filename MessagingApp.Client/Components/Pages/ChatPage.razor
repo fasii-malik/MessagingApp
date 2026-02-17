@@ -205,7 +205,7 @@
                             <div class="mb-3">
 
 
-                                <p class="text-muted small text-center">New Conversation</p>
+                                <p class="text-muted small text-center">Start a Chat</p>
 
                                 @foreach (var user in users.Where(u => u.IsOnline))
                                 {
@@ -345,10 +345,10 @@
                                         <div class="conversation-details">
                                             <div class="conversation-header">
                                                 <span>@agent.Name</span>
-                                                <span class="text-muted small">Now</span>
+                                                <span class="text-muted small"></span>                                                
                                             </div>
                                             <div class="conversation-preview">
-                                                Hello! How can I help you today?
+                                                Hello! How can I help you?
                                             </div>
                                         </div>
                                         <div class="dropdown" @onclick:stopPropagation="true">
@@ -383,7 +383,9 @@
 
     @if (loading)
     {
-        <p class="mt-5 text-center">Loading...</p>
+        <LoadingIndicator IsLoading="isUploading"
+                          LoadingMessage="Loading Conversations"
+                          SubMessage="Fetching Data, please wait..." />
     }
     else if (!string.IsNullOrEmpty(initError))
     {
@@ -397,7 +399,7 @@
 
             @if (isSelectionMode)
             {
-                <div class="d-flex justify-content-end align-items-center gap-2 bg-light">
+                <div class="d-flex justify-content-end align-items-center gap-2 bg-light c-margin">
                     <span class="text-muted small mt-1">
                         @selectedMessageIds.Count selected
                     </span>
@@ -583,7 +585,7 @@
 
                         <button class="btn btn-sm btn-light d-md-none"
                                 @onclick="() => { selectedUser = null; selectedGroup = null;
-                                    showStarredMessages = false;}">
+                                    showStarredMessages = false; selectedAgent = null;}">
                             ← Back
                         </button>
                         @* ================= USER CHAT ================= *@
@@ -603,16 +605,29 @@
                                     @if (typingUserId != null)
                                     {
                                         <div>
-                                            <small class="typing-indicator text-muted">
+                                            <small class="typing-indicator text-muted">                                                
+                                                typing
                                                 <span class="typing-dot"></span>
                                                 <span class="typing-dot"></span>
                                                 <span class="typing-dot"></span>
-                                                typing...
                                             </small>
                                         </div>
                                     }
                                 </div>
                             </div>
+
+                            @if (loadingMessages)
+                            {
+                                <!-- ✅ SPINNER -->
+                                <div class="d-flex flex-column align-items-center justify-content-center h-100 gap-2">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <small class="text-muted">Loading messages...</small>
+                                </div>
+                            }
+                            else
+                            {
 
                             <!-- MESSAGES -->
                             <div id="chatMessages" class="flex-grow-1 border rounded p-2 mb-2 overflow-auto user-chat-messages">
@@ -654,6 +669,7 @@
                                     </div>
                                 }
                             </div>
+                            }
                         }
 
                         @* ================= GROUP CHAT ================= *@
@@ -674,7 +690,18 @@
                                     </small>
                                 </div>
                             </div>
-
+                            @if (loadingMessages)
+                            {
+                                <!-- ✅ SPINNER -->
+                                <div class="d-flex flex-column align-items-center justify-content-center h-100 gap-2">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <small class="text-muted">Loading messages...</small>
+                                </div>
+                            }
+                            else
+                            {
                             <!-- MESSAGES -->
                             <div id="chatMessages" class="flex-grow-1 border rounded p-2 mb-2 overflow-auto group-chat-messages">
                                 @foreach (var msg in groupMessages)
@@ -717,6 +744,7 @@
                                     </div>
                                 }
                             </div>
+                            }
                         }
                         else if (showStarredMessages)
                         {
@@ -770,6 +798,11 @@
                         }
                         else if (selectedAgent != null)
                         {
+                            <!-- Add this at the top of your component -->
+                            <LoadingIndicator IsLoading="isUploading"
+                                              LoadingMessage="Uploading Document"
+                                              SubMessage="Generating embeddings, please wait..." />
+
                             <!-- HEADER -->
                             <div class="chat-header-fancy">
                                 <div class="chat-user-avatar agent-avatar">
@@ -779,39 +812,84 @@
                                     <h5 class="mb-0">@selectedAgent.Name</h5>
                                     <small class="text-muted">AI Assistant</small>
 
-                                    @if (typingUserId != null && typingUserId == selectedAgent.Id.ToString())
+
+                                    <!-- Show attached file in header -->
+                                    @if (attachedFile != null)
                                     {
-                                        <div>
-                                            <small class="typing-indicator text-muted">
-                                                typing...
-                                            </small>
+                                        <div class="attached-file-preview">
+                                            <i class="bi bi-file-earmark"></i>
+                                            <span class="file-name">@attachedFile.Name</span>
+                                            <span class="file-size">(@FormatFileSize(attachedFile.Size))</span>
+                                            <button class="btn-remove-file" @onclick="RemoveAttachment">
+                                                <i class="bi bi-x"></i>
+                                            </button>
                                         </div>
                                     }
-                                     <!-- Show attached file in header -->
-        @if (attachedFile != null)
-        {
-            <div class="attached-file-preview">
-                <i class="bi bi-file-earmark"></i>
-                <span class="file-name">@attachedFile.Name</span>
-                <span class="file-size">(@FormatFileSize(attachedFile.Size))</span>
-                <button class="btn-remove-file" @onclick="RemoveAttachment">
-                    <i class="bi bi-x"></i>
-                </button>
-            </div>
-        }
-    </div>
-    
-    <!-- Attachment Icon in Header -->
-    <label for="fileInput" class="attachment-icon-header" title="Attach file">
-        <i class="bi bi-paperclip"></i>
-    </label>
-    <InputFile id="fileInput" 
-               OnChange="HandleAttachment" 
-               style="display: none;" 
-               accept="image/*,.pdf,.doc,.docx,.txt" />
                                 </div>
-                            
 
+                                <!-- Right side controls -->
+                                <div class="header-right-controls">
+                                    <!-- Temporary List Documents Button -->
+                                    <button class="btn btn-info btn-sm" @onclick="GetDocuments">
+                                        <i class="bi bi-list-ul"></i>
+                                    </button>
+
+                                    <button class="btn btn-danger btn-sm" @onclick="RemoveAllSavedEmbeddings">Delete all Embeddings</button>
+
+                                    <!-- Agent Type Dropdown -->
+                                    <div class="agent-type-selector">
+                                        <div class="dropdown">
+                                            <button class="btn btn-sm btn-outline-primary dropdown-toggle agent-type-btn"
+                                                    type="button"
+                                                    id="agentTypeDropdown"
+                                                    data-bs-toggle="dropdown"
+                                                    aria-expanded="false">
+                                                <i class="bi bi-@(isRagAgent ? "database" : "chat-dots")"></i>
+                                                <span class="agent-type-text">@(isRagAgent ? "RAG" : "Agent")</span>
+                                            </button>
+                                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="agentTypeDropdown">
+                                                <li>
+                                                    <a class="dropdown-item @(!isRagAgent ? "active" : "")"
+                                                       @onclick="() => SelectAgentType(false)">
+                                                        <i class="bi bi-chat-dots"></i>
+                                                        <span class="m-1">Agent</span>
+                                                    </a>
+                                                </li>
+                                                <li>
+                                                    <a class="dropdown-item @(isRagAgent ? "active" : "")"
+                                                       @onclick="() => SelectAgentType(true)">
+                                                        <i class="bi bi-database"></i>
+                                                        <span class="m-1">RAG Agent</span>
+                                                    </a>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                    </div>
+
+
+                                    <!-- Attachment Icon in Header -->
+                                    <label for="fileInput" class="attachment-icon-header" title="Attach file">
+                                        <i class="bi bi-paperclip"></i>
+                                    </label>
+                                    <InputFile id="fileInput"
+                                               OnChange="HandleAttachment"
+                                               style="display: none;"
+                                               accept="image/*,.pdf,.doc,.docx,.txt" />
+                                </div>
+
+                            </div>
+                            @if (loadingMessages)
+                            {
+                                <!-- ✅ SPINNER -->
+                                <div class="d-flex flex-column align-items-center justify-content-center h-100 gap-2">
+                                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <small class="text-muted">Loading messages...</small>
+                                </div>
+                            }
+                            else
+                            {
                             <!-- MESSAGES -->
                             <div id="chatMessages" class="flex-grow-1 border rounded p-2 mb-2 overflow-auto agent-chat-messages">
                                 @foreach (var msg in messages)
@@ -856,6 +934,10 @@
                                                 }
                                             </div>
 
+                                            <div class="message-time">
+                                                @msg.CreatedAt.ToLocalTime().ToString("HH:mm")
+                                            </div>
+
                                             @if (isSelected)
                                             {
                                                 <span class="selection-tick">✔</span>
@@ -888,6 +970,7 @@
                                     </div>
                                 }
                             </div>
+                            }
                         }
 
                         <!-- INPUT -->
@@ -907,7 +990,7 @@
                                            style="@(selectedBot != null ? $"padding-left: {CalculatePadding(selectedBot.Name)}px;" : "")" />
                                 </div>
 
-                    
+
 
                                 <button class="btn btn-secondary chat-send-btn"
                                         @onclick="Send">
@@ -961,14 +1044,25 @@
 
 
 @code {
+    //--------------------------------User Variables-----------------------------------
     List<UserDto> users = new();
     string? currentUserId;
     string? token;
-    bool loading = true;
-    string? initError;
-    List<MessageDto> messages = new();
     UserDto? selectedUser;
     UserDto? CurrentUser { get; set; }
+    private string? typingUserId;
+    private string CurrentUserInitials => CurrentUser == null ? "NA"
+    : string.Concat(CurrentUser.FullName
+        .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+        .Select(n => n[0])
+    ).ToUpper();
+
+    bool loading = true;
+    string? initError;
+
+    List<MessageDto> messages = new();
+    string newMessage = "";
+
     enum SidebarSection
     {
         Conversations,
@@ -977,29 +1071,33 @@
         Agents
     }
     SidebarSection activeSection = SidebarSection.Conversations;
-
-    private string CurrentUserInitials => CurrentUser == null ? "NA"
-    : string.Concat(CurrentUser.FullName
-        .Split(' ', StringSplitOptions.RemoveEmptyEntries)
-        .Select(n => n[0])
-    ).ToUpper();
-
-    string newMessage = "";
+    
     private System.Timers.Timer? typingTimer;
-    private string? typingUserId;
+    
     List<ConversationDto>? conversations { get; set; }
     ConversationDto? selectedConversation;
     bool isMiniSidebarExpanded = false;
     bool isSelectionMode = false;
     private string searchText = string.Empty;
 
-    private IEnumerable<ConversationDto> FilteredConversations =>
-    string.IsNullOrWhiteSpace(searchText)
-        ? conversations ?? Enumerable.Empty<ConversationDto>()
-        : conversations!
-            .Where(c =>
-                c.FullName.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
-                (c.LastMessage?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false));
+    private IEnumerable<ConversationDto> FilteredConversations
+    {
+        get
+        {
+            var agentIds = agents?.Select(a => a.Id).ToHashSet() ?? new HashSet<Guid>();
+
+            var baseConversations = (conversations ?? Enumerable.Empty<ConversationDto>())
+                .Where(c => !agentIds.Contains(c.UserId)); // ✅ Filter agents from both branches
+
+            if (string.IsNullOrWhiteSpace(searchText))
+                return baseConversations;
+
+            return baseConversations
+                .Where(c =>
+                    c.FullName.Contains(searchText, StringComparison.OrdinalIgnoreCase) ||
+                    (c.LastMessage?.Contains(searchText, StringComparison.OrdinalIgnoreCase) ?? false));
+        }
+    }
 
     HashSet<Guid> selectedMessageIds = new();
     List<GroupDto> groups = new();
@@ -1024,7 +1122,11 @@
     // File attachment properties
     private IBrowserFile? attachedFile;
     private const long maxFileSize = 10 * 1024 * 1024; // 10MB
-                                                       // @* -------------------------------------- Ai Bot List Pending ------------------------------------- *@
+    private bool isUploading = false;
+    private bool loadingMessages = false;
+    private string? selectedDocumentId;
+    private bool isRagAgent = false;
+    // @* -------------------------------------- Ai Bot List Pending ------------------------------------- *@
     public class AiBot
     {
         public Guid Id { get; set; }
@@ -1080,7 +1182,10 @@
     {
         if (!firstRender) return;
 
+        isUploading = true;
         loading = true;
+        StateHasChanged();
+
         try
         {
             token = await AuthProvider.GetTokenAsync();
@@ -1163,21 +1268,13 @@
         }
         finally
         {
+            isUploading = false;
             loading = false;
             StateHasChanged();
         }
-    }
+    } 
 
-    string GetUserName(Guid senderId)
-    {
-        var user = users.FirstOrDefault(u => u.Id == senderId);
-        return user?.FullName ?? "Unknown";
-    }
-
-    void ToggleMiniSidebar()
-    {
-        isMiniSidebarExpanded = !isMiniSidebarExpanded;
-    }
+    //===================================SideBar Selection Methods Start=================================
 
     async Task SelectUser(UserDto user)
     {
@@ -1188,19 +1285,24 @@
         showStarredMessages = false;
         selectedAgent = null;
 
+
+        loadingMessages = true;      // ✅ START
+        StateHasChanged();
+
         try
         {
             messages = await MessageService.GetChatAsync(user.Id);
-
-            StateHasChanged();
-
-            // Scroll after messages load
-            await Task.Delay(100);
-            await JS.InvokeVoidAsync("scrollToBottom", "chatMessages");
         }
         catch (Exception ex)
         {
             initError = $"Error fetching messages: {ex.Message}";
+        }
+        finally
+        {
+            loadingMessages = false;  // ✅ STOP
+            StateHasChanged();
+            await Task.Delay(100);
+            await JS.InvokeVoidAsync("scrollToBottom", "chatMessages");
         }
 
     }
@@ -1219,6 +1321,7 @@
         showStarredMessages = false;
         selectedAgent = null;
 
+
         // 🔥 Sync selectedUser from conversation
         selectedUser = users.FirstOrDefault(u => u.Id == convo.UserId)
                        ?? new UserDto
@@ -1227,14 +1330,101 @@
                                FullName = convo.FullName
                            };
 
-        messages = await MessageService.GetChatAsync(convo.UserId);
+        loadingMessages = true;      // ✅ START
         StateHasChanged();
 
-        // Scroll after messages load
-        await Task.Delay(100);
-        await JS.InvokeVoidAsync("scrollToBottom", "chatMessages");
+        try
+        {
+            messages = await MessageService.GetChatAsync(convo.UserId);
+      
+        }
+        finally
+        {
+            loadingMessages = false;  // ✅ STOP
+            StateHasChanged();
+            await Task.Delay(100);
+            await JS.InvokeVoidAsync("scrollToBottom", "chatMessages");
+        }
+    }
+
+    async Task SelectGroup(GroupDto group)
+    {
+        // Leave previous group if any
+        if (selectedGroup != null)
+            await Hub.LeaveGroupAsync(selectedGroup.Id);
+
+        selectedGroup = group;
+        CurrentGroupId = group.Id;
+        selectedUser = null;
+        selectedConversation = null;
+        showStarredMessages = false;
+        selectedAgent = null;
+
+        // Join the new group
+        await Hub.JoinGroupAsync(group.Id);
+
+        loadingMessages = true;      // ✅ START
+        StateHasChanged();
+
+        try
+        {
+            groupMessages = await GroupMessageService.GetGroupMessagesAsync(group.Id);   
+        }
+        finally
+        {
+            loadingMessages = false;  // ✅ STOP
+            StateHasChanged();
+            await Task.Delay(100);
+            await JS.InvokeVoidAsync("scrollToBottom", "chatMessages");
+        }
+    }
+
+    private async Task ShowStarredMessages()
+    {
+        selectedGroup = null;
+        selectedUser = null;
+        selectedAgent = null;
+
+        // Load starred messages from your service
+        starredMessages = await StarredMessageService.GetAllStarredMessagesAsync();
+        foreach (var msg in messages)
+        {
+            msg.IsStarred = starredMessages.Any(s => s.MessageId == msg.Id);
+        }
+
+        showStarredMessages = true;
+
         StateHasChanged();
     }
+
+    private async Task OpenAgentChat(AgentDto agent)
+    {
+        selectedUser = null;
+        selectedConversation = null;
+        selectedGroup = null;
+        CurrentGroupId = null;
+        showStarredMessages = false;
+        selectedAgent = agent;
+
+
+        loadingMessages = true;      // ✅ START
+        StateHasChanged();
+
+        try
+        {
+            messages = await MessageService.GetChatAsync(selectedAgent.Id);
+
+        }
+        finally
+        {
+            loadingMessages = false;  // ✅ STOP
+            StateHasChanged();
+            await Task.Delay(100);
+            await JS.InvokeVoidAsync("scrollToBottom", "chatMessages");
+        }
+    }
+
+    //===================================SideBar Selection Methods End=================================
 
     async Task Send()
     {
@@ -1290,13 +1480,63 @@
             // Scroll after sending
             await Task.Delay(100);
             await JS.InvokeVoidAsync("scrollToBottom", "chatMessages");
+
+        }
+        else if (selectedAgent != null && isRagAgent)
+        {
+            // 1. Snapshot the message and clear input immediately for a snappy feel
+            var userMsgText = newMessage;
+            newMessage = "";
+
+            // Save user message
+            await Hub.SendMessageAsync(selectedAgent.Id.ToString(), userMsgText);
+
+            isAgentThinking = true;
+            StateHasChanged(); // Force UI to show user message + spinner
+
+            // 3. Auto-scroll to the user's new message
+            await Task.Delay(100);
+            await JS.InvokeVoidAsync("scrollToBottom", "chatMessages");
+
+            try
+            {
+                // 4. Call the RAG Service
+                var response = await AgentService.SendRagMessageAsync(
+                    userMsgText,
+                    selectedDocumentId,
+                    isRagAgent
+                );
+
+                if (response != null)
+                {
+                    // Save bot response to DB
+                    await Hub.SendMessageFromAgent(selectedAgent.Id.ToString(), currentUserId, response.Content);
+
+
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"RAG Error: {ex.Message}");
+                // Optional: Add a "System" message to the chat about the error
+            }
+            finally
+            {
+                isAgentThinking = false;
+                StateHasChanged();
+
+                // Final scroll to show bot response
+                await Task.Delay(100);
+                await JS.InvokeVoidAsync("scrollToBottom", "chatMessages");
+            }
+
         }
         else if (selectedAgent != null)
         {
             if (string.IsNullOrWhiteSpace(newMessage) || selectedAgent == null)
                 return;
 
-               // Save user message
+            // Save user message
             await Hub.SendMessageAsync(selectedAgent.Id.ToString(), newMessage);
 
             isAgentThinking = true;
@@ -1329,7 +1569,7 @@
                     };
                 // Save bot response to DB
                 await Hub.SendMessageFromAgent(selectedAgent.Id.ToString(), currentUserId, agentResponse.Content);
-             
+
 
                 isAgentThinking = false;
                 StateHasChanged();
@@ -1340,94 +1580,9 @@
             }
         }
 
-
-    //         //mock Response start
-    //         if (string.IsNullOrWhiteSpace(newMessage))
-    //             return;
-
-    //         // 1️⃣ Add user message
-    //         var userMsg = new MessageDto
-    // {
-    //     Id = Guid.NewGuid(),
-    //     SenderId = Guid.Parse(currentUserId),
-    //     Content = newMessage,
-    //     CreatedAt = DateTime.UtcNow
-    // };
-
-    //         messages.Add(userMsg);
-
-    //         newMessage = string.Empty;
-
-    //         // 2️⃣ Show thinking
-    //         isAgentThinking = true;
-    //         StateHasChanged();
-
-    //         // Scroll to user message
-    //         await Task.Delay(100);
-    //         await JS.InvokeVoidAsync("scrollToBottom", "chatMessages");
-
-    //         // 3️⃣ Fake delay (simulate API)
-    //         await Task.Delay(2000);
-
-    //         // 4️⃣ Add fake agent reply
-    //         var agentMsg = new MessageDto
-    // {
-    //     Id = Guid.NewGuid(),
-    //     SenderId = selectedAgent.Id,
-    //     Content = GetFakeResponse(userMsg.Content),
-    //     CreatedAt = DateTime.UtcNow
-    // };
-
-    //         isAgentThinking = false;
-    //         StartTypewriterEffect(agentMsg);
-
-    //         StateHasChanged();
-
-    //     }
-    //     //mock Response start
-
         newMessage = "";
         StateHasChanged();
-    }
-
-    private string GetFakeResponse(string userMessage)
-    {
-        userMessage = userMessage.ToLower();
-
-        if (userMessage.Contains("hello"))
-            return @"
-# AI Assistant Response
-
-Hello! This is a simple markdown test.
-
-## Text Formatting
-
-- Bold example: **Bold Text**
-- Italic example: *Italic Text*
-- Inline code: `Console.WriteLine(""Hello"");`
-
----
-
-## Simple Code Block
-
-    public class Test
-    {
-        public void SayHello()
-        {
-            Console.WriteLine(""Hello World"");
-        }
-    }
-
-End of message.
-";
-
-
-    if (userMessage.Contains("price"))
-        return "The current price is fluctuating. Please check the market dashboard.";
-
-    return "That's interesting. Tell me more about it.";
-}
-
+    }    
 
     void OnMessageReceived(MessageDto msg)
     {
@@ -1441,9 +1596,9 @@ End of message.
             messages.Add(msg);
             InvokeAsync(async () =>
      {
-     StateHasChanged();
-     await Task.Delay(100); // Small delay to ensure render
-     await JS.InvokeVoidAsync("scrollToBottom", "chatMessages");
+         StateHasChanged();
+         await Task.Delay(100); // Small delay to ensure render
+         await JS.InvokeVoidAsync("scrollToBottom", "chatMessages");
      });
         }
         // 🔥 Handle agent chat
@@ -1461,9 +1616,9 @@ End of message.
                 messages.Add(msg);
                 InvokeAsync(async () =>
     {
-    StateHasChanged();
-    await Task.Delay(100);
-    await JS.InvokeVoidAsync("scrollToBottom", "chatMessages");
+        StateHasChanged();
+        await Task.Delay(100);
+        await JS.InvokeVoidAsync("scrollToBottom", "chatMessages");
     });
             }
         }
@@ -1496,9 +1651,9 @@ End of message.
 
             InvokeAsync(async () =>
     {
-    StateHasChanged();
-    await Task.Delay(100);
-    await JS.InvokeVoidAsync("scrollToBottom", "chatMessages");
+        StateHasChanged();
+        await Task.Delay(100);
+        await JS.InvokeVoidAsync("scrollToBottom", "chatMessages");
     });
         }
         // 🔥 ALWAYS update sidebar
@@ -1509,206 +1664,7 @@ End of message.
         );
 
         InvokeAsync(StateHasChanged);
-    }
-
-    void OnMessageClick(Guid messageId)
-    {
-        ToggleMessageSelection(messageId);
-
-        // Auto-enable selection mode
-        isSelectionMode = selectedMessageIds.Any();
-    }
-
-    void ToggleMessageSelection(Guid messageId)
-    {
-        if (selectedMessageIds.Contains(messageId))
-            selectedMessageIds.Remove(messageId);
-        else
-            selectedMessageIds.Add(messageId);
-
-        // Auto-exit selection mode
-        isSelectionMode = selectedMessageIds.Any();
-    }
-
-    void ClearSelection()
-    {
-        selectedMessageIds.Clear();
-        isSelectionMode = false;
-    }
-
-    async Task DeleteSelectedMessages()
-    {
-        if (!selectedMessageIds.Any())
-            return;
-
-        bool confirmed = await DialogService.ConfirmAsync(new MessageBoxOptions()
-            {
-                Title = "Confirm Action",
-                Text = "Are you sure you want to the message/s?",
-                RenderStyle = MessageBoxRenderStyle.Warning,
-                OkButtonText = "Delete",
-                CancelButtonText = "Cancel"
-            });
-
-        if (!confirmed) return;
-
-        Console.WriteLine($"Deleting private messages: {string.Join(",", selectedMessageIds)}");
-
-        bool success;
-
-        if (selectedGroup != null)
-        {
-            // ✅ GROUP CHAT DELETE
-            success = await GroupMessageService
-                .DeleteGroupMessagesAsync(selectedMessageIds);
-
-            if (success)
-            {
-                groupMessages.RemoveAll(
-                    m => selectedMessageIds.Contains(m.Id)
-                );
-
-                ToastService.ShowToast(new ToastOptions
-                    {
-                        Title = "Success!",
-                        Text = "Message Deleted successfully.",
-                        RenderStyle = ToastRenderStyle.Success,
-                        DisplayTime = TimeSpan.FromSeconds(5),
-                        ThemeMode = ToastThemeMode.Pastel
-                    });
-
-                // 🔥 RECALCULATE LAST MESSAGE CORRECTLY
-                var lastMsg = groupMessages
-                    .OrderByDescending(m => m.SentAt)
-                    .FirstOrDefault();
-
-
-                UpdateGroupConversationPreview(
-                    selectedGroup.Id,
-                    lastMsg?.Content,
-                    lastMsg?.SentAt
-                );
-
-            }
-        }else if(selectedAgent != null){
-            success = await MessageService
-                .DeleteMessagesAsync(selectedMessageIds);
-
-            if (success)
-                messages.RemoveAll(m => selectedMessageIds.Contains(m.Id));
-
-            ToastService.ShowToast(new ToastOptions
-                {
-                    Title = "Success!",
-                    Text = "Message Deleted successfully.",
-                    RenderStyle = ToastRenderStyle.Success,
-                    DisplayTime = TimeSpan.FromSeconds(5),
-                    ThemeMode = ToastThemeMode.Pastel
-                });
-        }
-        else
-        {
-            // ✅ PRIVATE CHAT DELETE
-            success = await MessageService
-                .DeleteMessagesAsync(selectedMessageIds);
-
-            if (success)
-                messages.RemoveAll(m => selectedMessageIds.Contains(m.Id));
-
-            ToastService.ShowToast(new ToastOptions
-                {
-                    Title = "Success!",
-                    Text = "Message Deleted successfully.",
-                    RenderStyle = ToastRenderStyle.Success,
-                    DisplayTime = TimeSpan.FromSeconds(5),
-                    ThemeMode = ToastThemeMode.Pastel
-                });
-
-            var lastMsg = messages
-                .OrderByDescending(m => m.CreatedAt)
-                .FirstOrDefault();
-
-            if (lastMsg != null)
-            {
-                UpdateConversationPreview(
-                    selectedUser!.Id,
-                    lastMsg?.Content,
-                    lastMsg.CreatedAt
-                    );
-            }
-        }
-
-        if (!success)
-        {
-            initError = "Failed to delete messages.";
-            return;
-        }
-
-        // reset state
-        selectedMessageIds.Clear();
-        isSelectionMode = false;
-
-        StateHasChanged();
-    }
-
-    void UpdateGroupConversationPreview(Guid groupId, string? lastMessage, DateTime? time)
-    {
-        var group = groups.FirstOrDefault(g => g.Id == groupId);
-
-        // ✅ SAFETY: group must exist
-        if (group == null) return;
-
-        group.LastMessage = lastMessage;
-        group.LastMessageTime = time;
-
-        groups = groups
-            .OrderByDescending(g => g.LastMessageTime ?? DateTime.MinValue)
-            .ToList();
-
-        InvokeAsync(StateHasChanged);
-    }
-
-    void UpdateConversationPreview(Guid otherUserId, string? lastMessage, DateTime time)
-    {
-        if (conversations == null)
-            conversations = new List<ConversationDto>();
-
-        var convo = conversations.FirstOrDefault(c => c.UserId == otherUserId);
-
-        // CREATE conversation if it doesn't exist
-        if (convo == null)
-        {
-            var user = users.FirstOrDefault(u => u.Id == otherUserId);
-
-            convo = new ConversationDto
-                {
-                    UserId = otherUserId,
-                    FullName = user?.FullName ?? "Unknown",
-                    LastMessage = lastMessage,
-                    LastMessageTime = time,
-                    UnreadCount = 0
-                };
-
-            conversations.Add(convo);
-        }
-        else
-        {
-            convo.LastMessage = lastMessage;
-            convo.LastMessageTime = time;
-        }
-
-        // 🔥 Move to top
-        conversations = conversations
-            .OrderByDescending(c => c.LastMessageTime)
-            .ToList();
-
-        InvokeAsync(StateHasChanged);
-    }
-
-    void OpenAddMemberModal()
-    {
-        showAddMemberModal = true;
-    }
+    }        
 
     async Task AddMember()
     {
@@ -1741,276 +1697,7 @@ End of message.
         }
 
         StateHasChanged();
-    }
-
-    private async Task LeaveGroup()
-    {
-        if (CurrentGroupId == null) return;
-
-        bool confirmed = await DialogService.ConfirmAsync(new MessageBoxOptions()
-            {
-                Title = "Confirm Action",
-                Text = "Are you sure you want to leave this group?",
-                RenderStyle = MessageBoxRenderStyle.Warning,
-                OkButtonText = "Leave",
-                CancelButtonText = "Cancel"
-            });
-
-        if (!confirmed) return;
-
-        var success = await GroupService.LeaveGroupAsync(CurrentGroupId.Value);
-
-        if (success)
-        {
-            groups.RemoveAll(g => g.Id == CurrentGroupId);
-
-            // 🔥 CLEAR CHAT STATE
-            selectedGroup = null;
-            CurrentGroupId = null;
-            groupMessages.Clear();
-
-            ToastService.ShowToast(new ToastOptions
-                {
-                    Title = "Group",
-                    Text = "Left group successfully.",
-                    RenderStyle = ToastRenderStyle.Success,
-                    DisplayTime = TimeSpan.FromSeconds(5),
-                    ThemeMode = ToastThemeMode.Pastel
-                });
-
-            StateHasChanged();
-        }
-    }
-
-    private async Task DeleteConversation(Guid otherUserId)
-    {
-        bool confirmed = await DialogService.ConfirmAsync(new MessageBoxOptions()
-            {
-                Title = "Confirm Action",
-                Text = "Are you sure you want to delete this conversation?",
-                RenderStyle = MessageBoxRenderStyle.Warning,
-                OkButtonText = "Delete",
-                CancelButtonText = "Cancel"
-            });
-
-        if (!confirmed) return;
-
-        var success = await MessageService.DeleteConversationAsync(otherUserId);
-        if (success)
-        {
-            // Remove locally
-            conversations.RemoveAll(c => c.UserId == otherUserId);
-            StateHasChanged();
-
-            ToastService.ShowToast(new ToastOptions
-                {
-                    Title = "Success!",
-                    Text = "Conversation Deleted successfully.",
-                    RenderStyle = ToastRenderStyle.Success,
-                    DisplayTime = TimeSpan.FromSeconds(5),
-                    ThemeMode = ToastThemeMode.Pastel
-                });
-
-            // Reset chat if this was selected
-            if (selectedUser?.Id == otherUserId)
-                selectedUser = null;
-        }
-    }
-
-    private async Task Logout()
-    {
-        // 🔥 1. Disconnect SignalR
-        await Hub.DisconnectAsync();
-
-        // 2. Remove token
-        await JS.InvokeVoidAsync("deleteCookie", "access_token");
-
-        // 3. Update auth state
-        if (AuthProvider is JWTAuthenticationStateProvider jwtAuth)
-        {
-            jwtAuth.MarkAsUnauthorize();
-        }
-
-        // 4. Redirect
-        Nav.NavigateTo("/login", true);
-    }
-
-    async Task SelectGroup(GroupDto group)
-    {
-        // Leave previous group if any
-        if (selectedGroup != null)
-            await Hub.LeaveGroupAsync(selectedGroup.Id);
-
-        selectedGroup = group;
-        CurrentGroupId = group.Id;
-        selectedUser = null;
-        selectedConversation = null;
-        showStarredMessages = false;
-        selectedAgent = null;
-
-        // Join the new group
-        await Hub.JoinGroupAsync(group.Id);
-
-        // Load existing messages
-        groupMessages = await GroupMessageService.GetGroupMessagesAsync(group.Id);
-
-        StateHasChanged();
-
-        await JS.InvokeVoidAsync("scrollToBottom", "chatMessages");
-
-        StateHasChanged();
-    }
-
-    private async Task TogglePin(ConversationDto convo)
-    {
-        bool success;
-
-        if (convo.IsPinned)
-            success = await MessageService.UnpinConversationAsync(convo.UserId);
-        else
-            success = await MessageService.PinConversationAsync(convo.UserId);
-
-        if (!success)
-            return;
-
-        convo.IsPinned = !convo.IsPinned;
-
-        // Optional: re-sort locally for instant UX
-        conversations = conversations
-            .OrderByDescending(c => c.IsPinned)
-            .ThenByDescending(c => c.LastMessageTime)
-            .ToList();
-    }
-
-    async Task ToggleGroupPin(GroupDto group)
-    {
-        if (group.IsPinned)
-            await GroupService.UnpinGroupAsync(group.Id);
-        else
-            await GroupService.PinGroupAsync(group.Id);
-
-        group.IsPinned = !group.IsPinned;
-
-        groups = groups
-            .OrderByDescending(g => g.IsPinned)
-            .ThenByDescending(g => g.LastMessageTime ?? DateTime.MinValue)
-            .ToList();
-    }
-
-    private async Task ShowStarredMessages()
-    {
-        selectedGroup = null;
-        selectedUser = null;
-        selectedAgent = null;
-
-        // Load starred messages from your service
-        starredMessages = await StarredMessageService.GetAllStarredMessagesAsync();
-        foreach (var msg in messages)
-        {
-            msg.IsStarred = starredMessages.Any(s => s.MessageId == msg.Id);
-        }
-
-        showStarredMessages = true;
-
-        StateHasChanged();
-    }
-
-    private void CloseStarredMessages()
-    {
-        showStarredMessages = false;
-        selectedUser = null;
-        selectedGroup = null;
-    }
-
-    private async Task ToggleStar(IEnumerable<StarredMessageDto> starredMessagesToUpdate)
-    {
-        try
-        {
-            var list = starredMessagesToUpdate.ToList();
-
-            foreach (var item in list)
-            {
-                if (item.Type == "Group Message")
-                {
-                    await StarredMessageService.ToggleGroupStarAsync(item.MessageId);
-
-                    var groupMsg = groupMessages.FirstOrDefault(m => m.Id == item.MessageId);
-                    if (groupMsg != null)
-                        groupMsg.IsStarred = !groupMsg.IsStarred;
-                }
-                else
-                {
-                    await StarredMessageService.ToggleStarAsync(item.MessageId);
-
-                    var msg = messages.FirstOrDefault(m => m.Id == item.MessageId);
-                    if (msg != null)
-                        msg.IsStarred = !msg.IsStarred;
-                }
-            }
-
-            ToastService.ShowToast(new ToastOptions
-                {
-                    Title = "Success",
-                    Text = $"{list.Count} message(s) updated successfully.",
-                    RenderStyle = ToastRenderStyle.Success,
-                    DisplayTime = TimeSpan.FromSeconds(3),
-                    ThemeMode = ToastThemeMode.Pastel
-                });
-        }
-        catch
-        {
-            ToastService.ShowToast(new ToastOptions
-                {
-                    Title = "Error",
-                    Text = "Something went wrong.",
-                    RenderStyle = ToastRenderStyle.Danger,
-                    DisplayTime = TimeSpan.FromSeconds(5),
-                    ThemeMode = ToastThemeMode.Pastel
-                });
-        }
-        finally
-        {
-            selectedMessageIds.Clear();
-            isSelectionMode = false;
-
-            if (showStarredMessages)
-                starredMessages = await StarredMessageService.GetAllStarredMessagesAsync();
-
-            StateHasChanged();
-        }
-    }
-
-    //Helper method for StarredMessages
-    private IEnumerable<StarredMessageDto> ResolveSelectedStarredMessages()
-    {
-        // ⭐ Starred Messages View
-        if (showStarredMessages)
-        {
-            return starredMessages
-                .Where(m => selectedMessageIds.Contains(m.MessageId));
-        }
-
-        // 👥 Group Chat View
-        if (selectedGroup != null)
-        {
-            return groupMessages
-                .Where(m => selectedMessageIds.Contains(m.Id))
-                .Select(m => new StarredMessageDto
-                    {
-                        MessageId = m.Id,
-                        Type = "Group Message"
-                    });
-        }
-
-        // 👤 Private Chat View
-        return messages
-            .Where(m => selectedMessageIds.Contains(m.Id))
-            .Select(m => new StarredMessageDto
-                {
-                    MessageId = m.Id,
-                    Type = "Private Message"
-                });
-    }
+    }       
 
     private void OnUserTyping(string userId)
     {
@@ -2029,66 +1716,115 @@ End of message.
             InvokeAsync(StateHasChanged);
         }
     }
-
-
-    public static string FormatMessageTime(DateTime sentAt)
+    
+    private async Task HandleAttachment(InputFileChangeEventArgs e)
     {
-        var now = DateTime.Now;
-        var sent = sentAt.ToLocalTime(); // make sure to convert from UTC if needed
+        try
+        {
+            var file = e.File;
 
-        var diff = now.Date - sent.Date;
+            // Check file size
+            if (file.Size > maxFileSize)
+            {
+                ToastService.ShowToast(new ToastOptions
+                    {
+                        Title = "File Too Large",
+                        Text = $"File size must be less than {maxFileSize / (1024 * 1024)}MB",
+                        RenderStyle = ToastRenderStyle.Warning,
+                        DisplayTime = TimeSpan.FromSeconds(3),
+                        ThemeMode = ToastThemeMode.Pastel
+                    });
+                return;
+            }
 
-        if (diff.Days == 0)
-        {
-            // Today → show only time
-            return sent.ToString("HH:mm"); // e.g., 14:35
+            attachedFile = file;
+
+            if (attachedFile == null)
+                return;
+
+            // Show loading indicator
+            isUploading = true;
+            StateHasChanged();
+
+            var result = await AgentService.UploadDocumentAsync(attachedFile);
+
+            // Hide loading indicator
+            isUploading = false;
+
+            if (result != null)
+            {
+                selectedDocumentId = result.DocumentId;
+
+                ToastService.ShowToast(new ToastOptions
+                    {
+                        Title = "Success",
+                        Text = $"Document uploaded: {result.DocumentName}",
+                        RenderStyle = ToastRenderStyle.Success,
+                        DisplayTime = TimeSpan.FromSeconds(3)
+                    });
+
+            }
+            StateHasChanged();
         }
-        else if (diff.Days == 1)
+        catch (Exception ex)
         {
-            // Yesterday
-            return "Yesterday";
+            ToastService.ShowToast(new ToastOptions
+                {
+                    Title = "Error",
+                    Text = "Failed to attach file",
+                    RenderStyle = ToastRenderStyle.Danger,
+                    DisplayTime = TimeSpan.FromSeconds(3),
+                    ThemeMode = ToastThemeMode.Pastel
+                });
         }
-        else if (diff.Days < 7)
+    }    
+
+    private void SelectAgentType(bool useRagAgent)
+    {
+        isRagAgent = useRagAgent;
+        StateHasChanged();
+
+        // Optional: Show toast notification
+        ToastService.ShowToast(new ToastOptions
+            {
+                Title = "Agent Type Changed",
+                Text = $"Switched to @{(isRagAgent ? "RagAgent" : "Agent")}",
+                RenderStyle = ToastRenderStyle.Info,
+                DisplayTime = TimeSpan.FromSeconds(2),
+                ThemeMode = ToastThemeMode.Pastel
+            });
+    }   
+
+    private async void RemoveAllSavedEmbeddings()
+    {
+        var documents = await AgentService.GetUploadedDocumentsAsync();
+
+        if (documents != null && documents.Any())
         {
-            // Within last week → show day of the week
-            return sent.ToString("dddd"); // e.g., Monday
+            Console.WriteLine($"Found {documents.Count} documents. Starting batch deletion...");
+
+            foreach (var doc in documents)
+            {
+                Console.WriteLine($"Deleting: {doc.DocumentName} (ID: {doc.DocumentId})...");
+
+                bool isDeleted = await AgentService.DeleteDocumentAsync(doc.DocumentId);
+
+                if (isDeleted)
+                {
+                    Console.WriteLine($"Successfully deleted {doc.DocumentName}.");
+                }
+                else
+                {
+                    Console.WriteLine($"Failed to delete {doc.DocumentName}.");
+                }
+            }
+            Console.WriteLine("Finished processing all documents.");
         }
         else
         {
-            // Older → show date
-            return sent.ToString("dd/MM/yyyy"); // or "MMM dd, yyyy"
+            Console.WriteLine("No documents found to delete.");
         }
-    }
 
-    private int CalculatePadding(string botName)
-    {
-        // Calculate padding based on bot name length (approximately 8px per character + base padding)
-        return 20 + (botName.Length * 8);
-    }
-    private void HandleKeyDown(KeyboardEventArgs e)
-    {
-        if (e.Key == "Backspace" && string.IsNullOrEmpty(newMessage) && selectedBot != null)
-        {
-            selectedBot = null;
-        }
-    }
-
-    private async Task OpenAgentChat(AgentDto agent)
-    {
-        selectedUser = null;
-        selectedConversation = null;
-        selectedGroup = null;
-        CurrentGroupId = null;
-        showStarredMessages = false;
-        selectedAgent = agent;
-
-        messages = await MessageService.GetChatAsync(selectedAgent.Id);   
-        
-        StateHasChanged();
-
-        await JS.InvokeVoidAsync("scrollToBottom", "chatMessages");
-
-        StateHasChanged();
     }
 
     private async void StartTypewriterEffect(MessageDto message)
@@ -2161,6 +1897,527 @@ End of message.
         });
     }
 
+    //=================================Bellow Are Toggle Methods=================================
+
+    private async Task TogglePin(ConversationDto convo)
+    {
+        bool success;
+
+        if (convo.IsPinned)
+            success = await MessageService.UnpinConversationAsync(convo.UserId);
+        else
+            success = await MessageService.PinConversationAsync(convo.UserId);
+
+        if (!success)
+            return;
+
+        convo.IsPinned = !convo.IsPinned;
+
+        // Optional: re-sort locally for instant UX
+        conversations = conversations
+            .OrderByDescending(c => c.IsPinned)
+            .ThenByDescending(c => c.LastMessageTime)
+            .ToList();
+    }
+
+    async Task ToggleGroupPin(GroupDto group)
+    {
+        if (group.IsPinned)
+            await GroupService.UnpinGroupAsync(group.Id);
+        else
+            await GroupService.PinGroupAsync(group.Id);
+
+        group.IsPinned = !group.IsPinned;
+
+        groups = groups
+            .OrderByDescending(g => g.IsPinned)
+            .ThenByDescending(g => g.LastMessageTime ?? DateTime.MinValue)
+            .ToList();
+    }
+
+    private async Task ToggleStar(IEnumerable<StarredMessageDto> starredMessagesToUpdate)
+    {
+        try
+        {
+            var list = starredMessagesToUpdate.ToList();
+
+            foreach (var item in list)
+            {
+                if (item.Type == "Group Message")
+                {
+                    await StarredMessageService.ToggleGroupStarAsync(item.MessageId);
+
+                    var groupMsg = groupMessages.FirstOrDefault(m => m.Id == item.MessageId);
+                    if (groupMsg != null)
+                        groupMsg.IsStarred = !groupMsg.IsStarred;
+                }
+                else
+                {
+                    await StarredMessageService.ToggleStarAsync(item.MessageId);
+
+                    var msg = messages.FirstOrDefault(m => m.Id == item.MessageId);
+                    if (msg != null)
+                        msg.IsStarred = !msg.IsStarred;
+                }
+            }
+
+            ToastService.ShowToast(new ToastOptions
+                {
+                    Title = "Success",
+                    Text = $"{list.Count} message(s) updated successfully.",
+                    RenderStyle = ToastRenderStyle.Success,
+                    DisplayTime = TimeSpan.FromSeconds(3),
+                    ThemeMode = ToastThemeMode.Pastel
+                });
+        }
+        catch
+        {
+            ToastService.ShowToast(new ToastOptions
+                {
+                    Title = "Error",
+                    Text = "Something went wrong.",
+                    RenderStyle = ToastRenderStyle.Danger,
+                    DisplayTime = TimeSpan.FromSeconds(5),
+                    ThemeMode = ToastThemeMode.Pastel
+                });
+        }
+        finally
+        {
+            selectedMessageIds.Clear();
+            isSelectionMode = false;
+
+            if (showStarredMessages)
+                starredMessages = await StarredMessageService.GetAllStarredMessagesAsync();
+
+            StateHasChanged();
+        }
+    }
+
+    void ToggleMessageSelection(Guid messageId)
+    {
+        if (selectedMessageIds.Contains(messageId))
+            selectedMessageIds.Remove(messageId);
+        else
+            selectedMessageIds.Add(messageId);
+
+        // Auto-exit selection mode
+        isSelectionMode = selectedMessageIds.Any();
+    }
+
+    void ToggleMiniSidebar()
+    {
+        isMiniSidebarExpanded = !isMiniSidebarExpanded;
+    }
+
+    //=================================Bellow Are Deletion Methods=================================
+
+    async Task DeleteSelectedMessages()
+    {
+        if (!selectedMessageIds.Any())
+            return;
+
+        bool confirmed = await DialogService.ConfirmAsync(new MessageBoxOptions()
+            {
+                Title = "Confirm Action",
+                Text = "Are you sure you want to the message/s?",
+                RenderStyle = MessageBoxRenderStyle.Warning,
+                OkButtonText = "Delete",
+                CancelButtonText = "Cancel"
+            });
+
+        if (!confirmed) return;
+
+        Console.WriteLine($"Deleting private messages: {string.Join(",", selectedMessageIds)}");
+
+        bool success;
+
+        if (selectedGroup != null)
+        {
+            // ✅ GROUP CHAT DELETE
+            success = await GroupMessageService
+                .DeleteGroupMessagesAsync(selectedMessageIds);
+
+            if (success)
+            {
+                groupMessages.RemoveAll(
+                    m => selectedMessageIds.Contains(m.Id)
+                );
+
+                ToastService.ShowToast(new ToastOptions
+                    {
+                        Title = "Success!",
+                        Text = "Message Deleted successfully.",
+                        RenderStyle = ToastRenderStyle.Success,
+                        DisplayTime = TimeSpan.FromSeconds(5),
+                        ThemeMode = ToastThemeMode.Pastel
+                    });
+
+                // 🔥 RECALCULATE LAST MESSAGE CORRECTLY
+                var lastMsg = groupMessages
+                    .OrderByDescending(m => m.SentAt)
+                    .FirstOrDefault();
+
+
+                UpdateGroupConversationPreview(
+                    selectedGroup.Id,
+                    lastMsg?.Content,
+                    lastMsg?.SentAt
+                );
+
+            }
+        }
+        else if (selectedAgent != null)
+        {
+            success = await MessageService
+                .DeleteMessagesAsync(selectedMessageIds);
+
+            if (success)
+                messages.RemoveAll(m => selectedMessageIds.Contains(m.Id));
+
+            ToastService.ShowToast(new ToastOptions
+                {
+                    Title = "Success!",
+                    Text = "Message Deleted successfully.",
+                    RenderStyle = ToastRenderStyle.Success,
+                    DisplayTime = TimeSpan.FromSeconds(5),
+                    ThemeMode = ToastThemeMode.Pastel
+                });
+        }
+        else
+        {
+            // ✅ PRIVATE CHAT DELETE
+            success = await MessageService
+                .DeleteMessagesAsync(selectedMessageIds);
+
+            if (success)
+                messages.RemoveAll(m => selectedMessageIds.Contains(m.Id));
+
+            ToastService.ShowToast(new ToastOptions
+                {
+                    Title = "Success!",
+                    Text = "Message Deleted successfully.",
+                    RenderStyle = ToastRenderStyle.Success,
+                    DisplayTime = TimeSpan.FromSeconds(5),
+                    ThemeMode = ToastThemeMode.Pastel
+                });
+
+            var lastMsg = messages
+                .OrderByDescending(m => m.CreatedAt)
+                .FirstOrDefault();
+
+            if (lastMsg != null)
+            {
+                UpdateConversationPreview(
+                    selectedUser!.Id,
+                    lastMsg?.Content,
+                    lastMsg.CreatedAt
+                    );
+            }
+        }
+
+        if (!success)
+        {
+            initError = "Failed to delete messages.";
+            return;
+        }
+
+        // reset state
+        selectedMessageIds.Clear();
+        isSelectionMode = false;
+
+        StateHasChanged();
+    }
+
+    private async Task DeleteConversation(Guid otherUserId)
+    {
+        bool confirmed = await DialogService.ConfirmAsync(new MessageBoxOptions()
+            {
+                Title = "Confirm Action",
+                Text = "Are you sure you want to delete this conversation?",
+                RenderStyle = MessageBoxRenderStyle.Warning,
+                OkButtonText = "Delete",
+                CancelButtonText = "Cancel"
+            });
+
+        if (!confirmed) return;
+
+        var success = await MessageService.DeleteConversationAsync(otherUserId);
+        if (success)
+        {
+            // Remove locally
+            conversations.RemoveAll(c => c.UserId == otherUserId);
+            StateHasChanged();
+
+            ToastService.ShowToast(new ToastOptions
+                {
+                    Title = "Success!",
+                    Text = "Conversation Deleted successfully.",
+                    RenderStyle = ToastRenderStyle.Success,
+                    DisplayTime = TimeSpan.FromSeconds(5),
+                    ThemeMode = ToastThemeMode.Pastel
+                });
+
+            // Reset chat if this was selected
+            if (selectedUser?.Id == otherUserId)
+                selectedUser = null;
+        }
+    }
+
+    private async Task LeaveGroup()
+    {
+        if (CurrentGroupId == null) return;
+
+        bool confirmed = await DialogService.ConfirmAsync(new MessageBoxOptions()
+            {
+                Title = "Confirm Action",
+                Text = "Are you sure you want to leave this group?",
+                RenderStyle = MessageBoxRenderStyle.Warning,
+                OkButtonText = "Leave",
+                CancelButtonText = "Cancel"
+            });
+
+        if (!confirmed) return;
+
+        var success = await GroupService.LeaveGroupAsync(CurrentGroupId.Value);
+
+        if (success)
+        {
+            groups.RemoveAll(g => g.Id == CurrentGroupId);
+
+            // 🔥 CLEAR CHAT STATE
+            selectedGroup = null;
+            CurrentGroupId = null;
+            groupMessages.Clear();
+
+            ToastService.ShowToast(new ToastOptions
+                {
+                    Title = "Group",
+                    Text = "Left group successfully.",
+                    RenderStyle = ToastRenderStyle.Success,
+                    DisplayTime = TimeSpan.FromSeconds(5),
+                    ThemeMode = ToastThemeMode.Pastel
+                });
+
+            StateHasChanged();
+        }
+    }
+
+    //=================================Bellow Are Closing/Removing Methods=================================
+
+    private async Task Logout()
+    {
+        // 🔥 1. Disconnect SignalR
+        await Hub.DisconnectAsync();
+
+        // 2. Remove token
+        await JS.InvokeVoidAsync("deleteCookie", "access_token");
+
+        // 3. Update auth state
+        if (AuthProvider is JWTAuthenticationStateProvider jwtAuth)
+        {
+            jwtAuth.MarkAsUnauthorize();
+        }
+
+        // 4. Redirect
+        Nav.NavigateTo("/login", true);
+    }
+
+    void ClearSelection()
+    {
+        selectedMessageIds.Clear();
+        isSelectionMode = false;
+    }  
+
+    private async void RemoveAttachment()
+    {
+        if (selectedDocumentId != null)
+        {
+            Console.WriteLine($"Found {selectedDocumentId} Starting deletion...");
+
+            bool isDeleted = await AgentService.DeleteDocumentAsync(selectedDocumentId);
+
+            if (isDeleted)
+            {
+                Console.WriteLine("Deletion successful!");
+            }
+        }
+        else
+        {
+            Console.WriteLine("Document 'Test_Doc.pdf' not found in the list.");
+        }
+
+        attachedFile = null;
+        StateHasChanged();
+    }
+
+    private void CloseStarredMessages()
+    {
+        showStarredMessages = false;
+        selectedUser = null;
+        selectedGroup = null;
+    }
+
+    //=================================Bellow Are Helper Methods=================================
+   
+    string GetUserName(Guid senderId)
+    {
+        var user = users.FirstOrDefault(u => u.Id == senderId);
+        return user?.FullName ?? "Unknown";
+    }
+
+    void OnMessageClick(Guid messageId)
+    {
+        ToggleMessageSelection(messageId);
+
+        // Auto-enable selection mode
+        isSelectionMode = selectedMessageIds.Any();
+    }
+
+    void UpdateGroupConversationPreview(Guid groupId, string? lastMessage, DateTime? time)
+    {
+        var group = groups.FirstOrDefault(g => g.Id == groupId);
+
+        // ✅ SAFETY: group must exist
+        if (group == null) return;
+
+        group.LastMessage = lastMessage;
+        group.LastMessageTime = time;
+
+        groups = groups
+            .OrderByDescending(g => g.LastMessageTime ?? DateTime.MinValue)
+            .ToList();
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    void UpdateConversationPreview(Guid otherUserId, string? lastMessage, DateTime time)
+    {
+        if (conversations == null)
+            conversations = new List<ConversationDto>();
+
+        var convo = conversations.FirstOrDefault(c => c.UserId == otherUserId);
+
+        // CREATE conversation if it doesn't exist
+        if (convo == null)
+        {
+            var user = users.FirstOrDefault(u => u.Id == otherUserId);
+
+            convo = new ConversationDto
+                {
+                    UserId = otherUserId,
+                    FullName = user?.FullName ?? "Unknown",
+                    LastMessage = lastMessage,
+                    LastMessageTime = time,
+                    UnreadCount = 0
+                };
+
+            conversations.Add(convo);
+        }
+        else
+        {
+            convo.LastMessage = lastMessage;
+            convo.LastMessageTime = time;
+        }
+
+        // 🔥 Move to top
+        conversations = conversations
+            .OrderByDescending(c => c.LastMessageTime)
+            .ToList();
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    void OpenAddMemberModal()
+    {
+        showAddMemberModal = true;
+    }
+
+    private IEnumerable<StarredMessageDto> ResolveSelectedStarredMessages()
+    {
+        // ⭐ Starred Messages View
+        if (showStarredMessages)
+        {
+            return starredMessages
+                .Where(m => selectedMessageIds.Contains(m.MessageId));
+        }
+
+        // 👥 Group Chat View
+        if (selectedGroup != null)
+        {
+            return groupMessages
+                .Where(m => selectedMessageIds.Contains(m.Id))
+                .Select(m => new StarredMessageDto
+                    {
+                        MessageId = m.Id,
+                        Type = "Group Message"
+                    });
+        }
+
+        // 👤 Private Chat View
+        return messages
+            .Where(m => selectedMessageIds.Contains(m.Id))
+            .Select(m => new StarredMessageDto
+                {
+                    MessageId = m.Id,
+                    Type = "Private Message"
+                });
+    }
+
+    public static string FormatMessageTime(DateTime sentAt)
+    {
+        var now = DateTime.Now;
+        var sent = sentAt.ToLocalTime(); // make sure to convert from UTC if needed
+
+        var diff = now.Date - sent.Date;
+
+        if (diff.Days == 0)
+        {
+            // Today → show only time
+            return sent.ToString("HH:mm"); // e.g., 14:35
+        }
+        else if (diff.Days == 1)
+        {
+            // Yesterday
+            return "Yesterday";
+        }
+        else if (diff.Days < 7)
+        {
+            // Within last week → show day of the week
+            return sent.ToString("dddd"); // e.g., Monday
+        }
+        else
+        {
+            // Older → show date
+            return sent.ToString("dd/MM/yyyy"); // or "MMM dd, yyyy"
+        }
+    }
+
+    private int CalculatePadding(string botName)
+    {
+        // Calculate padding based on bot name length (approximately 8px per character + base padding)
+        return 20 + (botName.Length * 8);
+    }
+
+    private void HandleKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Backspace" && string.IsNullOrEmpty(newMessage) && selectedBot != null)
+        {
+            selectedBot = null;
+        }
+    }       
+
+    private string FormatAgentMessage(string content)
+    {
+        if (string.IsNullOrEmpty(content))
+            return content;
+
+        var pipeline = new MarkdownPipelineBuilder()
+            .UseAdvancedExtensions()
+            .Build();
+
+        return Markdig.Markdown.ToHtml(content, pipeline);
+    }
+
     private async Task ScrollToBottom()
     {
         try
@@ -2174,69 +2431,6 @@ End of message.
         {
             Console.WriteLine($"Scroll error: {ex.Message}");
         }
-    }
-    private string FormatAgentMessage(string content)
-    {
-        if (string.IsNullOrEmpty(content))
-            return content;
-
-        var pipeline = new MarkdownPipelineBuilder()
-            .UseAdvancedExtensions()
-            .Build();
-
-        return Markdig.Markdown.ToHtml(content, pipeline);
-    }
-
-    private async Task HandleAttachment(InputFileChangeEventArgs e)
-    {
-        try
-        {
-            var file = e.File;
-
-            // Check file size
-            if (file.Size > maxFileSize)
-            {
-                ToastService.ShowToast(new ToastOptions
-                    {
-                        Title = "File Too Large",
-                        Text = $"File size must be less than {maxFileSize / (1024 * 1024)}MB",
-                        RenderStyle = ToastRenderStyle.Warning,
-                        DisplayTime = TimeSpan.FromSeconds(3),
-                        ThemeMode = ToastThemeMode.Pastel
-                    });
-                return;
-            }
-
-            attachedFile = file;
-
-            ToastService.ShowToast(new ToastOptions
-                {
-                    Title = "File Attached",
-                    Text = $"{file.Name} attached successfully",
-                    RenderStyle = ToastRenderStyle.Success,
-                    DisplayTime = TimeSpan.FromSeconds(2),
-                    ThemeMode = ToastThemeMode.Pastel
-                });
-
-            StateHasChanged();
-        }
-        catch (Exception ex)
-        {
-            ToastService.ShowToast(new ToastOptions
-                {
-                    Title = "Error",
-                    Text = "Failed to attach file",
-                    RenderStyle = ToastRenderStyle.Danger,
-                    DisplayTime = TimeSpan.FromSeconds(3),
-                    ThemeMode = ToastThemeMode.Pastel
-                });
-        }
-    }
-
-    private void RemoveAttachment()
-    {
-        attachedFile = null;
-        StateHasChanged();
     }
 
     private string FormatFileSize(long bytes)
@@ -2252,5 +2446,48 @@ End of message.
         }
 
         return $"{len:0.##} {sizes[order]}";
+    }
+
+    private async void GetDocuments()
+    {
+        var documents = await AgentService.GetUploadedDocumentsAsync();
+    }
+
+    private string GetFakeResponse(string userMessage)
+    {
+        userMessage = userMessage.ToLower();
+
+        if (userMessage.Contains("hello"))
+            return @"
+# AI Assistant Response
+
+Hello! This is a simple markdown test.
+
+## Text Formatting
+
+- Bold example: **Bold Text**
+- Italic example: *Italic Text*
+- Inline code: `Console.WriteLine(""Hello"");`
+
+---
+
+## Simple Code Block
+
+    public class Test
+    {
+        public void SayHello()
+        {
+            Console.WriteLine(""Hello World"");
+        }
+    }
+
+End of message.
+";
+
+
+        if (userMessage.Contains("price"))
+            return "The current price is fluctuating. Please check the market dashboard.";
+
+        return "That's interesting. Tell me more about it.";
     }
 }

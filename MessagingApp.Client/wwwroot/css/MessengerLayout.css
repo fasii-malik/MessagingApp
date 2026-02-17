@@ -2132,6 +2132,74 @@
     box-shadow: 0 4px 16px rgba(52, 152, 219, 0.4);
     transition: all 0.2s ease;
 }
+
+
+/* Make header use flexbox to push items to the right */
+.chat-header-fancy {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+/* Push right controls to the end */
+.header-right-controls {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/* Agent Type Dropdown Styles */
+.agent-type-selector .agent-type-btn {
+    width: 75px;
+    height: 35px;
+    border-radius: 5px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: white;
+    border: 1px solid #dee2e6;
+}
+
+    .agent-type-selector .agent-type-btn:hover {
+        background: #f8f9fa;
+        border-color: #0d6efd;
+    }
+
+    .agent-type-selector .agent-type-btn i {
+        font-size: 1.1rem;
+    }
+
+.agent-type-selector .dropdown-menu {
+    min-width: 160px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border: 1px solid #dee2e6;
+}
+
+.agent-type-selector .dropdown-item {
+    padding: 0.5rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+    .agent-type-selector .dropdown-item i {
+        width: 20px;
+    }
+
+    .agent-type-selector .dropdown-item:hover {
+        background-color: #f0f7ff;
+        color: #0d6efd;
+    }
+
+    .agent-type-selector .dropdown-item.active {
+        background-color: #0d6efd;
+        color: white;
+    }
+
 /* ===================== */
 /* 📱 MOBILE RESPONSIVE */
 /* ===================== */
@@ -2168,5 +2236,8 @@
         padding: 4px 8px;
         height: 40px;
         width:220px;
+    }
+    .c-margin {
+        margin-bottom: 40px;
     }
 }

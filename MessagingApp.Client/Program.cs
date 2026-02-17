@@ -27,6 +27,7 @@ builder.Services.AddScoped<AgentService>();
 builder.Services.AddHttpClient("Api", client =>
 {
     client.BaseAddress = new Uri("https://localhost:7222");
+    client.Timeout = TimeSpan.FromMinutes(10); // increase to 10 minutes
 })
 .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
 {
